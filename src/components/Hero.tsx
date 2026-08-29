@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { DEADLINE_MAIN } from '@/lib/data';
 
 function useCountdown(target: number) {
@@ -23,6 +23,26 @@ function useCountdown(target: number) {
 
 export default function Hero() {
   const { days, hours, minutes, seconds } = useCountdown(DEADLINE_MAIN);
+  const tiltZoneRef = useRef<HTMLDivElement>(null);
+  const tiltTargetRef = useRef<HTMLDivElement>(null);
+
+  const handleTiltMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    const zone = tiltZoneRef.current;
+    const target = tiltTargetRef.current;
+    if (!zone || !target) return;
+    const rect = zone.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width;
+    const py = (e.clientY - rect.top) / rect.height;
+    const rotY = (px - 0.5) * 24;
+    const rotX = (0.5 - py) * 18;
+    target.style.transform = `rotateX(${rotX}deg) rotateY(${rotY}deg) scale(1.035)`;
+  }, []);
+
+  const handleTiltLeave = useCallback(() => {
+    const target = tiltTargetRef.current;
+    if (!target) return;
+    target.style.transform = 'rotateX(0deg) rotateY(0deg) scale(1)';
+  }, []);
 
   return (
     <section
@@ -66,10 +86,10 @@ export default function Hero() {
       />
 
       <div
+        className="g-hero"
         style={{
           position: 'relative',
           display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1.15fr) minmax(0, 0.85fr)',
           gap: 'clamp(32px, 5vw, 72px)',
           alignItems: 'center',
         }}
@@ -228,7 +248,7 @@ export default function Hero() {
           </div>
         </div>
 
-        <div style={{ position: 'relative' }}>
+        <div className="g-hero-logo" style={{ position: 'relative' }}>
           <div
             aria-hidden="true"
             data-bloom
@@ -246,17 +266,25 @@ export default function Hero() {
               pointerEvents: 'none',
             }}
           />
-          <div style={{ position: 'relative', animation: 'floaty 8000ms ease-in-out infinite' }}>
+          <div
+            ref={tiltZoneRef}
+            className="hero-tilt-zone"
+            onPointerMove={handleTiltMove}
+            onPointerLeave={handleTiltLeave}
+            onPointerCancel={handleTiltLeave}
+            style={{ position: 'relative', width: '80%', margin: '0 auto' }}
+          >
             <div
+              ref={tiltTargetRef}
               id="logo-lockup"
               role="img"
               aria-label="Milad ke-290 Pondok Pesantren Sidogiri — Satu Arah"
+              className="hero-tilt-target logo-shine"
               style={{
                 position: 'relative',
                 width: '100%',
                 aspectRatio: '1292 / 736',
                 transformStyle: 'preserve-3d',
-                filter: 'drop-shadow(0 10px 26px rgba(36,33,28,0.16))',
               }}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}

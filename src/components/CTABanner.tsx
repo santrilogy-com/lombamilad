@@ -27,7 +27,7 @@ export default function CTABanner() {
           WebkitMaskImage: 'radial-gradient(ellipse at 70% 40%, black, transparent 68%)',
         }}
       />
-      <div style={{ position: 'relative', maxWidth: '46ch' }}>
+      <div className="reveal" style={{ position: 'relative', maxWidth: '46ch' }}>
         <div
           style={{
             fontSize: 11,

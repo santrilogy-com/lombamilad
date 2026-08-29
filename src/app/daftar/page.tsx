@@ -177,7 +177,7 @@ export default function DaftarPage() {
           <h2 style={{ fontFamily: 'var(--disp)', fontWeight: 300, fontSize: 'clamp(20px,2vw,26px)', letterSpacing: '-0.03em', margin: '0 0 24px' }}>
             Data diri
           </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 18 }}>
+          <div className="g-formulir" style={{ display: 'grid', gap: 18 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <label htmlFor="nama" style={labelStyle}>Nama lengkap</label>
               <input id="nama" name="nama" type="text" required placeholder="Nama sesuai identitas" style={inputStyle()} />
@@ -300,7 +300,7 @@ export default function DaftarPage() {
         <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--grey)', marginBottom: 16 }}>
           Alur pendaftaran
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 20 }}>
+        <div className="g-steps4" style={{ display: 'grid', gap: 20 }}>
           {STEPS.map((s) => (
             <div key={s.num}>
               <div style={{ fontFamily: 'var(--disp)', fontWeight: 300, fontSize: 14, color: 'var(--olive)' }}>{s.num}</div>

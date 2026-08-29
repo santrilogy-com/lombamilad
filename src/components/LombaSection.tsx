@@ -1,15 +1,24 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { LOMBA } from '@/lib/data';
 
 export default function LombaSection() {
   const [active, setActive] = useState(0);
   const current = LOMBA[active];
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  function selectTab(i: number) {
+    setActive(i);
+    requestAnimationFrame(() => {
+      panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
 
   return (
     <section id="lomba" style={{ padding: 'clamp(48px, 6vw, 92px) clamp(20px, 4vw, 64px)' }}>
       <div
+        className="reveal"
         style={{
           display: 'flex',
           alignItems: 'flex-end',
@@ -58,14 +67,15 @@ export default function LombaSection() {
         </p>
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 28 }}>
+      <div className="reveal" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 28 }}>
         {LOMBA.map((tab, i) => {
           const isActive = i === active;
           return (
             <button
               key={tab.id}
               type="button"
-              onClick={() => setActive(i)}
+              className="tab-btn"
+              onClick={() => selectTab(i)}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -77,7 +87,6 @@ export default function LombaSection() {
                 border: `1px solid ${isActive ? 'var(--olive)' : 'rgba(36,33,28,0.18)'}`,
                 borderRadius: 2,
                 cursor: 'pointer',
-                transition: 'all 360ms ease',
               }}
             >
               <span
@@ -97,12 +106,14 @@ export default function LombaSection() {
       </div>
 
       <div
+        ref={panelRef}
         style={{
           position: 'relative',
           overflow: 'hidden',
           background: 'var(--paper2)',
           borderRadius: 3,
           padding: 'clamp(28px, 3.5vw, 52px)',
+          scrollMarginTop: 88,
         }}
       >
         <div
@@ -123,10 +134,10 @@ export default function LombaSection() {
         />
         <div
           key={current.id}
+          className="g-lomba-detail"
           style={{
             position: 'relative',
             display: 'grid',
-            gridTemplateColumns: 'minmax(0, 0.9fr) minmax(0, 1.5fr)',
             gap: 'clamp(28px, 4vw, 60px)',
             animation: 'riseIn 560ms cubic-bezier(0.16,1,0.3,1) both',
           }}
@@ -211,9 +222,9 @@ export default function LombaSection() {
             </div>
           </div>
           <div
+            className="g-lomba-inner"
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
               gap: 'clamp(20px, 2.4vw, 34px)',
             }}
           >

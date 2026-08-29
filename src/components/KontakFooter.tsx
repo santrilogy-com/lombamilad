@@ -6,14 +6,14 @@ export default function KontakFooter() {
     <>
       <section
         id="kontak"
+        className="g-kontak"
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
           gap: 'clamp(24px, 4vw, 56px)',
           padding: 'clamp(48px, 6vw, 88px) clamp(20px, 4vw, 64px)',
         }}
       >
-        <div>
+        <div className="reveal">
           <div
             style={{
               fontSize: 11,
@@ -38,7 +38,7 @@ export default function KontakFooter() {
             Sekretaris Sie. Lomba
           </h2>
         </div>
-        <div>
+        <div className="reveal" style={{ transitionDelay: '80ms' }}>
           <div
             style={{
               fontSize: 11,
@@ -68,7 +68,7 @@ export default function KontakFooter() {
             ))}
           </div>
         </div>
-        <div>
+        <div className="reveal" style={{ transitionDelay: '160ms' }}>
           <div
             style={{
               fontSize: 11,

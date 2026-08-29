@@ -5,15 +5,15 @@ export default function AlurSection() {
   return (
     <section
       id="alur"
+      className="g-alur"
       style={{
         display: 'grid',
-        gridTemplateColumns: 'minmax(0, 0.85fr) minmax(0, 1.15fr)',
         gap: 'clamp(32px, 5vw, 72px)',
         padding: 'clamp(48px, 6vw, 92px) clamp(20px, 4vw, 64px)',
         borderTop: '1px solid var(--line)',
       }}
     >
-      <div>
+      <div className="reveal">
         <div
           style={{
             fontSize: 11,
@@ -52,15 +52,17 @@ export default function AlurSection() {
           orang dan pendaftaran ditutup setelah kuota terpenuhi.
         </p>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          {STEPS.map((st) => (
+          {STEPS.map((st, i) => (
             <div
               key={st.num}
+              className="reveal"
               style={{
                 display: 'grid',
                 gridTemplateColumns: '40px 1fr',
                 gap: 8,
                 padding: '20px 0',
                 borderTop: '1px solid var(--line)',
+                transitionDelay: `${i * 70}ms`,
               }}
             >
               <span
@@ -102,6 +104,7 @@ export default function AlurSection() {
       </div>
 
       <div
+        className="reveal"
         style={{
           position: 'relative',
           overflow: 'hidden',

@@ -9,6 +9,30 @@ import { useEffect } from 'react';
  * Juga mengaktifkan animasi reveal (.reveal) berbasisIntersectionObserver.
  */
 export default function CompassCursor() {
+  // Scroll-reveal must work on every device (mobile included), so it lives in
+  // its own effect, independent of the cursor-follow effect below which is
+  // intentionally skipped on touch/coarse-pointer devices.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) return;
+
+    const rx = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            (e.target as HTMLElement).classList.add('in-view');
+            rx.unobserve(e.target);
+          }
+        }
+      },
+      { threshold: 0.08 }
+    );
+    document.querySelectorAll('.reveal').forEach((el) => rx.observe(el));
+
+    return () => rx.disconnect();
+  }, []);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return;
@@ -105,22 +129,6 @@ export default function CompassCursor() {
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
-
-    // Scroll-reveal untuk elemen dengan kelas .reveal
-    if (!reduce) {
-      const rx = new IntersectionObserver(
-        (entries) => {
-          for (const e of entries) {
-            if (e.isIntersecting) {
-              (e.target as HTMLElement).classList.add('in-view');
-              rx.unobserve(e.target);
-            }
-          }
-        },
-        { threshold: 0.08 }
-      );
-      document.querySelectorAll('.reveal').forEach((el) => rx.observe(el));
-    }
 
     return () => {
       cancelAnimationFrame(raf);

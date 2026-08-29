@@ -22,20 +22,22 @@ export default function Stats() {
         }}
       />
       <div
+        className="g-stats"
         style={{
           position: 'relative',
           display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
           gap: 1,
           background: 'rgba(255,255,255,0.22)',
         }}
       >
-        {STATS.map((s) => (
+        {STATS.map((s, i) => (
           <div
             key={s.label}
+            className="reveal"
             style={{
               background: 'var(--olive)',
               padding: '30px clamp(20px, 3vw, 40px)',
+              transitionDelay: `${i * 90}ms`,
             }}
           >
             <div

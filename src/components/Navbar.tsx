@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { useState } from 'react';
 
 const navLinks = [
   { href: '/#lomba', label: 'Cabang Lomba' },
@@ -9,8 +12,9 @@ const navLinks = [
 ];
 
 export default function Navbar({ inverted = false }: { inverted?: boolean }) {
+  const [open, setOpen] = useState(false);
   const ink = inverted ? 'var(--paper)' : 'var(--ink)';
-  const hover = inverted ? 'var(--olive-l)' : 'var(--olive)';
+
   return (
     <nav
       style={{
@@ -49,7 +53,8 @@ export default function Navbar({ inverted = false }: { inverted?: boolean }) {
           Milad Sidogiri 290
         </span>
       </Link>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(14px, 2vw, 30px)' }}>
+
+      <div className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: 'clamp(14px, 2vw, 30px)' }}>
         {navLinks.map((l) => (
           <Link
             key={l.href}
@@ -75,6 +80,54 @@ export default function Navbar({ inverted = false }: { inverted?: boolean }) {
             borderRadius: 2,
           }}
           className="btn-olive"
+        >
+          Daftar
+        </Link>
+      </div>
+
+      <button
+        type="button"
+        className="nav-toggle"
+        aria-label={open ? 'Tutup menu' : 'Buka menu'}
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 40,
+          height: 40,
+          background: 'transparent',
+          border: '1px solid rgba(36,33,28,0.18)',
+          borderRadius: 2,
+          cursor: 'pointer',
+        }}
+      >
+        <span className={`burger${open ? ' is-open' : ''}`} />
+      </button>
+
+      <div className={`mobile-menu${open ? ' is-open' : ''}`}>
+        {navLinks.map((l) => (
+          <Link key={l.href} href={l.href} className="nav-link" onClick={() => setOpen(false)}>
+            {l.label}
+          </Link>
+        ))}
+        <Link
+          href="/daftar"
+          onClick={() => setOpen(false)}
+          className="btn-olive"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: 46,
+            marginTop: 14,
+            marginBottom: 16,
+            background: 'var(--olive)',
+            color: '#fff',
+            fontSize: 14,
+            fontWeight: 600,
+            borderRadius: 2,
+          }}
         >
           Daftar
         </Link>
