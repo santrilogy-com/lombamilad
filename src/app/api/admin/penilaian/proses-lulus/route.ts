@@ -1,0 +1,57 @@
+import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+const JUMLAH_FINALIST = 5;
+
+export async function POST() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return new NextResponse('Unauthorized', { status: 401 });
+
+  // Ambil semua peserta terverifikasi (yang sudah di-input nilai penyisihan)
+  const peserta = await prisma.pendaftar.findMany({
+    where: {
+      status: { in: ['TERVERIFIKASI', 'LOLOS_PENYISIHAN', 'GUGUR_PENYISIHAN', 'LOLOS_FINAL', 'JUARA_1', 'JUARA_2', 'JUARA_3'] },
+    },
+    include: { nilai: true },
+  });
+
+  const cabangIds = [...new Set(peserta.map((p) => p.cabangId))];
+
+  const result: Record<string, { lolos: string[]; gugur: string[]; belumDinilai: number }> = {};
+
+  for (const cid of cabangIds) {
+    const daftar = peserta
+      .filter((p) => p.cabangId === cid && p.nilai?.nilaiPenyisihan !== null)
+      .sort((a, b) => (b.nilai!.nilaiPenyisihan as number) - (a.nilai!.nilaiPenyisihan as number));
+
+    const lolos = daftar.slice(0, JUMLAH_FINALIST);
+    const gugur = daftar.slice(JUMLAH_FINALIST);
+    const belumDinilai = peserta.filter((p) => p.cabangId === cid && p.nilai?.nilaiPenyisihan === null).length;
+
+    await prisma.$transaction(async (tx) => {
+      for (let i = 0; i < daftar.length; i++) {
+        const p = daftar[i];
+        const top = i < JUMLAH_FINALIST;
+        await tx.pendaftar.update({
+          where: { id: p.id },
+          data: { status: top ? 'LOLOS_PENYISIHAN' : 'GUGUR_PENYISIHAN' },
+        });
+        if (p.nilai) {
+          await tx.nilai.update({
+            where: { pendaftarId: p.id },
+            data: { peringkatPenyisihan: i + 1 },
+          });
+        }
+      }
+    });
+
+    result[cid] = { lolos: lolos.map((p) => p.nomorPendaftaran), gugur: gugur.map((p) => p.nomorPendaftaran), belumDinilai };
+  }
+
+  return NextResponse.json({ ok: true, result });
+}

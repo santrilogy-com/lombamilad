@@ -1,0 +1,93 @@
+// Prisma schema for Lomba Nasional Milad Sidogiri 290
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum StatusPendaftar {
+  TERVERIFIKASI
+  MENUNGGU_VERIFIKASI
+  DITOLAK
+  LOLOS_PENYISIHAN
+  GUGUR_PENYISIHAN
+  LOLOS_FINAL
+  JUARA_1
+  JUARA_2
+  JUARA_3
+}
+
+model Admin {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  nama         String
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+model Pengumuman {
+  id          String   @id @default(cuid())
+  judul       String
+  isi         String
+  tipe        String   @default("umum") // umum | seleksi | final
+  published   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Pengaturan {
+  key        String   @id
+  value      String
+  updatedAt  DateTime @updatedAt
+}
+
+model Pendaftar {
+  id              String           @id @default(cuid())
+  nomorPendaftaran String          @unique
+  cabangId        String
+  nama            String
+  tempatLahir     String
+  tanggalLahir    DateTime
+  usia            Int
+  asalLembaga     String
+  whatsapp        String
+  email           String?
+  nomorIdentitas  String
+  fileIdentitas   String
+  fileSubmisi     String?
+  status          StatusPendaftar @default(MENUNGGU_VERIFIKASI)
+  tokenCek        String           @unique
+  verifikasiCatatan String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  nilai           Nilai?
+  cabang          Cabang           @relation(fields: [cabangId], references: [id])
+}
+
+model Nilai {
+  id            String   @id @default(cuid())
+  pendaftarId   String   @unique
+  nilaiPenyisihan Float?
+  nilaiFinal    Float?
+  peringkatPenyisihan Int?
+  peringkatFinal Int?
+  catatan       String?
+  dinilaiOleh   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  pendaftar     Pendaftar @relation(fields: [pendaftarId], references: [id])
+}
+
+model Cabang {
+  id       String  @id
+  nama     String
+  kuota    Int     @default(100)
+  aktif    Boolean @default(true)
+
+  pendaftar Pendaftar[]
+}
