@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { LOMBA } from '@/lib/data';
+import GantiPasswordCard from './GantiPasswordCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -123,6 +124,8 @@ export default async function AdminDashboardPage() {
           </div>
         )}
       </section>
+
+      <GantiPasswordCard />
     </div>
   );
 }
