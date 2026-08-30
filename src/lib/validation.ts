@@ -30,7 +30,8 @@ export const pendaftarSchema = z.object({
     .string()
     .trim()
     .toLowerCase()
-    .refine((v) => v === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v), 'Format email tidak valid'),
+    .min(1, 'Email wajib diisi')
+    .refine((v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v), 'Format email tidak valid'),
   whatsapp: z
     .string()
     .trim()

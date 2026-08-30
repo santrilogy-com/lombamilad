@@ -7,6 +7,7 @@ import { buatTautanWa } from '@/lib/whatsapp';
 type Peserta = {
   id: string;
   nama: string;
+  email: string | null;
   whatsapp: string;
   cabangId: string;
   cabangShort: string;
@@ -31,6 +32,7 @@ const STATUS_LABEL: Record<string, string> = {
   JUARA_3: 'Juara 3',
 };
 const SEMUA_STATUS = Object.keys(STATUS_LABEL);
+const UKURAN_BATCH = 15;
 
 const inputStyle = {
   height: 42,
@@ -41,17 +43,25 @@ const inputStyle = {
   fontSize: 13.5,
 } as const;
 
+type StatusKirim = 'menunggu' | 'terkirim' | 'gagal';
+
 export default function BroadcastWa({ peserta, pengumuman }: { peserta: Peserta[]; pengumuman: Pengumuman[] }) {
+  const [judul, setJudul] = useState('');
   const [pesan, setPesan] = useState('');
   const [cabangId, setCabangId] = useState('');
   const [statusDipilih, setStatusDipilih] = useState<string[]>(SEMUA_STATUS);
   const [cari, setCari] = useState('');
-  const [terkirim, setTerkirim] = useState<Record<string, boolean>>({});
+  const [waTerkirim, setWaTerkirim] = useState<Record<string, boolean>>({});
+  const [statusEmail, setStatusEmail] = useState<Record<string, StatusKirim>>({});
+  const [pesanError, setPesanError] = useState<Record<string, string>>({});
+  const [kirimBusy, setKirimBusy] = useState(false);
+  const [progres, setProgres] = useState({ selesai: 0, total: 0 });
 
   function pilihPengumuman(id: string) {
     const p = pengumuman.find((x) => x.id === id);
     if (!p) return;
-    setPesan(`Assalamu'alaikum {nama},\n\n*${p.judul}*\n\n${p.isi}\n\n— Panitia Lomba Nasional Milad Sidogiri 290`);
+    setJudul(p.judul);
+    setPesan(`Assalamu'alaikum {nama},\n\n${p.isi}`);
   }
 
   function toggleStatus(s: string) {
@@ -68,15 +78,57 @@ export default function BroadcastWa({ peserta, pengumuman }: { peserta: Peserta[
     });
   }, [peserta, cabangId, statusDipilih, cari]);
 
+  const bisaKirim = judul.trim() && pesan.trim();
+
+  async function kirimEmailMassal() {
+    if (!bisaKirim || kirimBusy) return;
+    const target = filtered.filter((p) => p.email);
+    if (target.length === 0) return;
+    setKirimBusy(true);
+    setProgres({ selesai: 0, total: target.length });
+    const statusBaru: Record<string, StatusKirim> = {};
+    target.forEach((p) => (statusBaru[p.id] = 'menunggu'));
+    setStatusEmail((s) => ({ ...s, ...statusBaru }));
+
+    for (let i = 0; i < target.length; i += UKURAN_BATCH) {
+      const batch = target.slice(i, i + UKURAN_BATCH);
+      try {
+        const res = await fetch('/api/admin/pengumuman/kirim-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ judul, pesan, pesertaIds: batch.map((p) => p.id) }),
+        });
+        const data = await res.json();
+        const berhasilSet = new Set<string>(data.terkirim || []);
+        const errMap: Record<string, string> = {};
+        (data.gagal || []).forEach((g: any) => { errMap[g.id] = g.error; });
+        setStatusEmail((s) => {
+          const next = { ...s };
+          batch.forEach((p) => { next[p.id] = berhasilSet.has(p.id) ? 'terkirim' : 'gagal'; });
+          return next;
+        });
+        setPesanError((s) => ({ ...s, ...errMap }));
+      } catch {
+        setStatusEmail((s) => {
+          const next = { ...s };
+          batch.forEach((p) => { next[p.id] = 'gagal'; });
+          return next;
+        });
+      }
+      setProgres((pr) => ({ ...pr, selesai: Math.min(target.length, pr.selesai + batch.length) }));
+    }
+    setKirimBusy(false);
+  }
+
   return (
     <div>
       <h2 style={{ fontFamily: 'var(--disp)', fontWeight: 400, fontSize: 18, letterSpacing: '-0.02em', margin: '0 0 6px' }}>
-        Kirim Pengumuman ke WhatsApp Peserta
+        Kirim Pengumuman ke Peserta
       </h2>
       <p style={{ fontSize: 13, color: '#5a554c', margin: '0 0 18px', maxWidth: '70ch' }}>
-        Sementara memakai tautan wa.me — klik &quot;Kirim&quot; per peserta akan membuka WhatsApp Web/App dengan pesan
-        sudah terisi, lalu Anda tinggal menekan kirim di sana. Pakai <code>{'{nama}'}</code> di pesan untuk otomatis
-        diganti nama masing-masing peserta.
+        Pakai <code>{'{nama}'}</code> di pesan untuk otomatis diganti nama masing-masing peserta. Email terkirim
+        otomatis lewat server (bertahap per {UKURAN_BATCH} peserta); WhatsApp masih lewat tautan wa.me — klik satu
+        per satu untuk membuka WhatsApp Web/App dengan pesan sudah terisi.
       </p>
 
       <div style={{ background: 'var(--paper2)', borderRadius: 4, padding: '22px 24px', marginBottom: 18 }}>
@@ -95,6 +147,12 @@ export default function BroadcastWa({ peserta, pengumuman }: { peserta: Peserta[
                 </option>
               ))}
             </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--grey)', display: 'block', marginBottom: 6 }}>
+              Judul (dipakai sebagai subjek email)
+            </label>
+            <input value={judul} onChange={(e) => setJudul(e.target.value)} placeholder="Mis. Jadwal & Link Zoom Penyisihan" style={{ ...inputStyle, width: '100%' }} />
           </div>
           <div>
             <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--grey)', display: 'block', marginBottom: 6 }}>
@@ -132,7 +190,7 @@ export default function BroadcastWa({ peserta, pengumuman }: { peserta: Peserta[
           </div>
         </div>
 
-        <div>
+        <div style={{ marginBottom: 16 }}>
           <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--grey)', display: 'block', marginBottom: 8 }}>
             Status peserta
           </label>
@@ -145,44 +203,60 @@ export default function BroadcastWa({ peserta, pengumuman }: { peserta: Peserta[
             ))}
           </div>
         </div>
+
+        <button
+          onClick={kirimEmailMassal}
+          disabled={!bisaKirim || kirimBusy || filtered.filter((p) => p.email).length === 0}
+          style={{ height: 44, padding: '0 22px', background: 'var(--ink)', color: 'var(--paper)', border: 0, borderRadius: 2, fontSize: 13.5, fontWeight: 600, cursor: kirimBusy ? 'wait' : 'pointer' }}
+        >
+          {kirimBusy ? `Mengirim email... ${progres.selesai}/${progres.total}` : `Kirim Email ke ${filtered.filter((p) => p.email).length} Peserta`}
+        </button>
       </div>
 
       <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--grey)', marginBottom: 10 }}>
         {filtered.length} peserta cocok filter
       </div>
 
-      {!pesan.trim() ? (
+      {!bisaKirim ? (
         <div style={{ background: 'var(--paper2)', borderRadius: 4, padding: '20px', fontSize: 13.5, color: '#5a554c' }}>
-          Isi pesan terlebih dahulu untuk memunculkan tombol kirim per peserta.
+          Isi judul dan pesan terlebih dahulu untuk memunculkan aksi kirim per peserta.
         </div>
       ) : (
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 600 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
             <thead>
               <tr style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--grey)', textAlign: 'left' }}>
                 <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Nama</th>
                 <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Cabang</th>
-                <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>No. WhatsApp</th>
+                <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Email</th>
+                <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>WhatsApp</th>
                 <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }} />
               </tr>
             </thead>
             <tbody>
               {filtered.map((p) => {
                 const pesanPersonal = pesan.replace(/\{nama\}/g, p.nama);
+                const st = statusEmail[p.id];
                 return (
-                  <tr key={p.id} style={{ opacity: terkirim[p.id] ? 0.5 : 1 }}>
+                  <tr key={p.id}>
                     <td style={{ padding: '10px', borderBottom: '1px solid var(--line)', fontSize: 13, fontWeight: 600 }}>{p.nama}</td>
                     <td style={{ padding: '10px', borderBottom: '1px solid var(--line)', fontSize: 12.5 }}>{p.cabangShort}</td>
+                    <td style={{ padding: '10px', borderBottom: '1px solid var(--line)', fontSize: 12.5 }}>
+                      {p.email || <span style={{ color: '#a94442' }}>—</span>}
+                      {st === 'terkirim' ? <span style={{ marginLeft: 6, color: '#2e7d2e', fontWeight: 700 }}>✓ terkirim</span> : null}
+                      {st === 'gagal' ? <span title={pesanError[p.id]} style={{ marginLeft: 6, color: '#a94442', fontWeight: 700 }}>✗ gagal</span> : null}
+                      {st === 'menunggu' ? <span style={{ marginLeft: 6, color: 'var(--grey)' }}>mengirim…</span> : null}
+                    </td>
                     <td style={{ padding: '10px', borderBottom: '1px solid var(--line)', fontSize: 12.5 }}>{p.whatsapp}</td>
                     <td style={{ padding: '10px', borderBottom: '1px solid var(--line)' }}>
                       <a
                         href={buatTautanWa(p.whatsapp, pesanPersonal)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        onClick={() => setTerkirim((m) => ({ ...m, [p.id]: true }))}
-                        style={{ display: 'inline-flex', alignItems: 'center', height: 32, padding: '0 14px', background: terkirim[p.id] ? 'transparent' : 'var(--ink)', color: terkirim[p.id] ? 'var(--grey)' : 'var(--paper)', border: terkirim[p.id] ? '1px solid rgba(36,33,28,0.25)' : 'none', borderRadius: 2, fontSize: 12, fontWeight: 600 }}
+                        onClick={() => setWaTerkirim((m) => ({ ...m, [p.id]: true }))}
+                        style={{ display: 'inline-flex', alignItems: 'center', height: 32, padding: '0 14px', background: waTerkirim[p.id] ? 'transparent' : 'var(--ink)', color: waTerkirim[p.id] ? 'var(--grey)' : 'var(--paper)', border: waTerkirim[p.id] ? '1px solid rgba(36,33,28,0.25)' : 'none', borderRadius: 2, fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}
                       >
-                        {terkirim[p.id] ? 'Sudah dibuka' : 'Kirim WA →'}
+                        {waTerkirim[p.id] ? 'Sudah dibuka' : 'Kirim WA →'}
                       </a>
                     </td>
                   </tr>
@@ -190,7 +264,7 @@ export default function BroadcastWa({ peserta, pengumuman }: { peserta: Peserta[
               })}
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={4} style={{ padding: '16px 10px', fontSize: 13, color: '#5a554c' }}>
+                  <td colSpan={5} style={{ padding: '16px 10px', fontSize: 13, color: '#5a554c' }}>
                     Tidak ada peserta yang cocok dengan filter.
                   </td>
                 </tr>

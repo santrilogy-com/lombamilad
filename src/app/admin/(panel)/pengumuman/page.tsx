@@ -9,7 +9,7 @@ export default async function AdminPengumumanPage() {
   const [list, pendaftar] = await Promise.all([
     prisma.pengumuman.findMany({ orderBy: { createdAt: 'desc' } }),
     prisma.pendaftar.findMany({
-      select: { id: true, nama: true, whatsapp: true, cabangId: true, status: true },
+      select: { id: true, nama: true, email: true, whatsapp: true, cabangId: true, status: true },
       orderBy: { nama: 'asc' },
     }),
   ]);
@@ -26,6 +26,7 @@ export default async function AdminPengumumanPage() {
   const peserta = pendaftar.map((p) => ({
     id: p.id,
     nama: p.nama,
+    email: p.email,
     whatsapp: p.whatsapp,
     cabangId: p.cabangId,
     cabangShort: LOMBA.find((c) => c.id === p.cabangId)?.short || p.cabangId,

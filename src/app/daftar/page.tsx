@@ -149,7 +149,7 @@ export default function DaftarPage() {
                   {token}
                 </div>
                 <div style={{ fontSize: 12.5, color: '#6b665c', marginTop: 8 }}>
-                  Gunakan nomor + token di halaman Cek Status untuk memantau hasil seleksi. Token juga dikirim ke email Anda bila diisi.
+                  Gunakan nomor + token di halaman Cek Status untuk memantau hasil seleksi. Token juga sudah dikirim ke email Anda.
                 </div>
               </>
             ) : null}
@@ -231,8 +231,8 @@ export default function DaftarPage() {
               <input id="whatsapp" name="whatsapp" type="text" required placeholder="08xxxxxxxxxx" style={inputStyle()} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <label htmlFor="email" style={labelStyle}>Email (opsional — untuk token pengumuman)</label>
-              <input id="email" name="email" type="email" placeholder="nama@email.com" style={inputStyle()} />
+              <label htmlFor="email" style={labelStyle}>Email aktif</label>
+              <input id="email" name="email" type="email" required placeholder="nama@email.com" style={inputStyle()} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <label htmlFor="nomorIdentitas" style={labelStyle}>Nomor identitas (KTP/KTM/KTS)</label>

@@ -27,6 +27,7 @@ export default async function AdminPenilaianPage({
     id: p.id,
     nomorPendaftaran: p.nomorPendaftaran,
     nama: p.nama,
+    email: p.email,
     asalLembaga: p.asalLembaga,
     cabangId: p.cabangId,
     cabangNama: LOMBA.find((c) => c.id === p.cabangId)?.name || p.cabangId,

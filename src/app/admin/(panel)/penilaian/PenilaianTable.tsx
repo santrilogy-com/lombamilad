@@ -6,6 +6,7 @@ type Row = {
   id: string;
   nomorPendaftaran: string;
   nama: string;
+  email: string | null;
   asalLembaga: string;
   cabangId: string;
   cabangNama: string;
@@ -40,6 +41,8 @@ export default function PenilaianTable({
   const [rows, setRows] = useState<Row[]>(pendaftar);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
+  const [statusHasil, setStatusHasil] = useState<Record<string, 'menunggu' | 'terkirim' | 'gagal'>>({});
+  const [kirimHasilCabang, setKirimHasilCabang] = useState<string | null>(null);
 
   const grouped = useMemo(() => {
     const g = new Map<string, Row[]>();
@@ -109,6 +112,42 @@ export default function PenilaianTable({
     }
   }
 
+  const UKURAN_BATCH = 15;
+
+  async function kirimHasilKeCabang(cid: string, peserta: Row[]) {
+    const target = peserta.filter((p) => p.email && (p.nilaiPenyisihan !== null || p.nilaiBabak2 !== null || p.nilaiFinal !== null));
+    if (target.length === 0) return;
+    setKirimHasilCabang(cid);
+    const awal: Record<string, 'menunggu'> = {};
+    target.forEach((p) => (awal[p.id] = 'menunggu'));
+    setStatusHasil((s) => ({ ...s, ...awal }));
+
+    for (let i = 0; i < target.length; i += UKURAN_BATCH) {
+      const batch = target.slice(i, i + UKURAN_BATCH);
+      try {
+        const res = await fetch('/api/admin/penilaian/kirim-hasil', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pesertaIds: batch.map((p) => p.id) }),
+        });
+        const data = await res.json();
+        const berhasilSet = new Set<string>(data.terkirim || []);
+        setStatusHasil((s) => {
+          const next = { ...s };
+          batch.forEach((p) => { next[p.id] = berhasilSet.has(p.id) ? 'terkirim' : 'gagal'; });
+          return next;
+        });
+      } catch {
+        setStatusHasil((s) => {
+          const next = { ...s };
+          batch.forEach((p) => { next[p.id] = 'gagal'; });
+          return next;
+        });
+      }
+    }
+    setKirimHasilCabang(null);
+  }
+
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, marginBottom: 18, flexWrap: 'wrap' }}>
@@ -151,11 +190,22 @@ export default function PenilaianTable({
         </div>
       ) : null}
 
-      {grouped.map(([cid, peserta]) => (
+      {grouped.map(([cid, peserta]) => {
+        const bisaKirim = peserta.filter((p) => p.email && (p.nilaiPenyisihan !== null || p.nilaiBabak2 !== null || p.nilaiFinal !== null));
+        return (
         <div key={cid} style={{ marginBottom: 34 }}>
-          <h3 style={{ fontFamily: 'var(--disp)', fontWeight: 400, fontSize: 18, letterSpacing: '-0.02em', margin: '0 0 12px' }}>
-            {peserta[0]?.cabangNama}
-          </h3>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap', marginBottom: 12 }}>
+            <h3 style={{ fontFamily: 'var(--disp)', fontWeight: 400, fontSize: 18, letterSpacing: '-0.02em', margin: 0 }}>
+              {peserta[0]?.cabangNama}
+            </h3>
+            <button
+              onClick={() => kirimHasilKeCabang(cid, peserta)}
+              disabled={kirimHasilCabang === cid || bisaKirim.length === 0}
+              style={{ height: 36, padding: '0 16px', background: 'transparent', border: '1px solid rgba(36,33,28,0.25)', borderRadius: 2, fontSize: 12.5, fontWeight: 600, cursor: bisaKirim.length === 0 ? 'not-allowed' : 'pointer' }}
+            >
+              {kirimHasilCabang === cid ? 'Mengirim…' : `Kirim Hasil ke Email (${bisaKirim.length})`}
+            </button>
+          </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
               <thead>
@@ -179,7 +229,12 @@ export default function PenilaianTable({
                   <tr key={p.id}>
                     <td style={{ padding: '10px', borderBottom: '1px solid var(--line)', fontSize: 12.5, fontWeight: 600, color: 'var(--olive-d)', whiteSpace: 'nowrap' }}>{p.nomorPendaftaran}</td>
                     <td style={{ padding: '10px', borderBottom: '1px solid var(--line)' }}>
-                      <div style={{ fontSize: 13.5, fontWeight: 600 }}>{p.nama}</div>
+                      <div style={{ fontSize: 13.5, fontWeight: 600 }}>
+                        {p.nama}
+                        {statusHasil[p.id] === 'terkirim' ? <span style={{ marginLeft: 6, fontSize: 11, color: '#2e7d2e' }}>✓ email terkirim</span> : null}
+                        {statusHasil[p.id] === 'gagal' ? <span style={{ marginLeft: 6, fontSize: 11, color: '#a94442' }}>✗ email gagal</span> : null}
+                        {statusHasil[p.id] === 'menunggu' ? <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--grey)' }}>mengirim…</span> : null}
+                      </div>
                       <div style={{ fontSize: 12, color: '#6b665c' }}>{p.asalLembaga}</div>
                     </td>
                     <td style={{ padding: '10px', borderBottom: '1px solid var(--line)' }}>
@@ -204,7 +259,8 @@ export default function PenilaianTable({
             </table>
           </div>
         </div>
-      ))}
+        );
+      })}
       {rows.length === 0 ? (
         <div style={{ background: 'var(--paper2)', borderRadius: 4, padding: '28px', fontSize: 14, color: '#5a554c' }}>
           Belum ada peserta terverifikasi untuk dinilai.
