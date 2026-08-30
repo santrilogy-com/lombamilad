@@ -69,17 +69,25 @@ export async function POST(req: Request) {
   const soalOrder = shuffle(bank.map((s) => s.id)).slice(0, JUMLAH_SOAL);
   const now = new Date();
 
-  await prisma.kuisAttempt.create({
-    data: {
-      pendaftarId: pendaftar.id,
-      status: 'SEDANG',
-      soalOrder,
-      jawaban: {},
-      soalSaatIni: 0,
-      mulaiAt: now,
-      batasWaktuSoal: new Date(now.getTime() + DETIK_PER_SOAL * 1000),
-    },
-  });
+  try {
+    await prisma.kuisAttempt.create({
+      data: {
+        pendaftarId: pendaftar.id,
+        status: 'SEDANG',
+        soalOrder,
+        jawaban: {},
+        soalSaatIni: 0,
+        mulaiAt: now,
+        batasWaktuSoal: new Date(now.getTime() + DETIK_PER_SOAL * 1000),
+      },
+    });
+  } catch (err: any) {
+    // Dua request "mulai" nyaris bersamaan (mis. React StrictMode di dev, atau
+    // klik ganda) bisa sama-sama lolos pengecekan "belum ada attempt" di atas.
+    // Kalau ini pelanggaran unique constraint pendaftarId, attempt yang lain
+    // sudah berhasil dibuat duluan — anggap sukses, bukan error.
+    if (err?.code !== 'P2002') throw err;
+  }
 
   return NextResponse.json({ ok: true, status: 'SEDANG' });
 }

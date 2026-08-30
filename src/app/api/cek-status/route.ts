@@ -15,7 +15,7 @@ export async function GET(req: Request) {
 
   const p = await prisma.pendaftar.findUnique({
     where: { nomorPendaftaran: nomor },
-    include: { nilai: true, cabang: true },
+    include: { nilai: true, cabang: true, kuisAttempt: true },
   });
 
   if (!p || p.tokenCek !== token) {
@@ -23,6 +23,21 @@ export async function GET(req: Request) {
   }
 
   const cabang = LOMBA.find((c) => c.id === p.cabangId);
+
+  let kuis: { attemptStatus: string | null; skor: number | null; dibuka: boolean } | null = null;
+  if (p.cabangId === 'mqk') {
+    const setting = await prisma.pengaturan.findUnique({ where: { key: 'kuis_mqk_status' } });
+    kuis = {
+      attemptStatus: p.kuisAttempt?.status ?? null,
+      skor: p.kuisAttempt?.skor ?? null,
+      dibuka: setting?.value === 'dibuka',
+    };
+  }
+
+  const pengumuman = await prisma.pengumuman.findMany({
+    where: { published: true, tipe: { in: ['seleksi', 'final', 'umum'] } },
+    orderBy: { createdAt: 'desc' },
+  });
   const labelStatus: Record<string, string> = {
     MENUNGGU_VERIFIKASI: 'Menunggu verifikasi berkas',
     TERVERIFIKASI: 'Berkas terverifikasi — terdaftar',
@@ -38,6 +53,7 @@ export async function GET(req: Request) {
   return NextResponse.json({
     nomorPendaftaran: p.nomorPendaftaran,
     nama: p.nama,
+    cabangId: p.cabangId,
     cabang: cabang?.name || p.cabang.nama,
     cabangShort: cabang?.short || p.cabang.nama,
     asalLembaga: p.asalLembaga,
@@ -46,9 +62,13 @@ export async function GET(req: Request) {
     status: labelStatus[p.status] || p.status,
     statusKode: p.status,
     nilaiPenyisihan: p.nilai?.nilaiPenyisihan ?? null,
+    nilaiBabak2: p.nilai?.nilaiBabak2 ?? null,
     nilaiFinal: p.nilai?.nilaiFinal ?? null,
     peringkatPenyisihan: p.nilai?.peringkatPenyisihan ?? null,
+    peringkatBabak2: p.nilai?.peringkatBabak2 ?? null,
     peringkatFinal: p.nilai?.peringkatFinal ?? null,
     verifikasiCatatan: p.verifikasiCatatan,
+    kuis,
+    pengumuman: pengumuman.map((pg) => ({ id: pg.id, judul: pg.judul, isi: pg.isi, createdAt: pg.createdAt })),
   });
 }

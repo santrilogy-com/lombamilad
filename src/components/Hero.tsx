@@ -89,6 +89,7 @@ export default function Hero() {
         className="g-hero"
         style={{
           position: 'relative',
+          zIndex: 2,
           display: 'grid',
           gap: 'clamp(32px, 5vw, 72px)',
           alignItems: 'center',
@@ -127,8 +128,8 @@ export default function Hero() {
           </div>
           <h1
             style={{
-              fontFamily: 'var(--disp)',
-              fontWeight: 300,
+              fontFamily: "'Cenzo', var(--disp)",
+              fontWeight: 400,
               fontSize: 'clamp(44px, 6.4vw, 92px)',
               lineHeight: 0.94,
               letterSpacing: '-0.045em',
@@ -236,11 +237,13 @@ export default function Hero() {
                 alignItems: 'center',
                 height: 52,
                 padding: '0 30px',
+                background: '#ffffff',
                 border: '1px solid rgba(36,33,28,0.3)',
                 color: 'var(--ink)',
                 fontSize: 14,
                 fontWeight: 600,
                 borderRadius: 2,
+                boxShadow: '0 1px 3px rgba(36,33,28,0.08)',
               }}
             >
               Lihat Ketentuan Lomba

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 type Soal = {
@@ -45,9 +46,10 @@ const inputStyle = {
 } as const;
 
 export default function KuisMqkClient() {
+  const searchParams = useSearchParams();
   const [step, setStep] = useState<Step>('login');
-  const [nomor, setNomor] = useState('');
-  const [token, setToken] = useState('');
+  const [nomor, setNomor] = useState(searchParams.get('nomor') || '');
+  const [token, setToken] = useState(searchParams.get('token') || '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -56,9 +58,17 @@ export default function KuisMqkClient() {
   const [total, setTotal] = useState(0);
   const [sisaDetik, setSisaDetik] = useState(0);
   const [hasil, setHasil] = useState<{ skor: number | null; benar: number; total: number } | null>(null);
+  const [toast, setToast] = useState('');
 
   const credRef = useRef({ nomor: '', token: '' });
   const lapoRef = useRef(0);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function tampilkanToast(pesan: string) {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast(pesan);
+    toastTimerRef.current = setTimeout(() => setToast(''), 1800);
+  }
 
   const muatSoal = useCallback(async () => {
     const { nomor: n, token: t } = credRef.current;
@@ -80,19 +90,21 @@ export default function KuisMqkClient() {
     }
   }, []);
 
-  async function mulai(e: React.FormEvent) {
-    e.preventDefault();
+  async function mulai(nomorArg?: string, tokenArg?: string) {
+    const n = nomorArg ?? nomor;
+    const t = tokenArg ?? token;
+    if (!n || !t) return;
     setError('');
     setBusy(true);
     try {
       const res = await fetch('/api/kuis/mulai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nomor, token }),
+        body: JSON.stringify({ nomor: n, token: t }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'Tidak dapat memulai kuis.');
-      credRef.current = { nomor: nomor.trim().toUpperCase(), token: token.trim() };
+      credRef.current = { nomor: n.trim().toUpperCase(), token: t.trim() };
       await muatSoal();
     } catch (err: any) {
       setError(err?.message || 'Terjadi kesalahan.');
@@ -100,6 +112,14 @@ export default function KuisMqkClient() {
       setBusy(false);
     }
   }
+
+  // Auto-mulai bila nomor & token dibawa lewat URL (mis. tautan dari Dashboard Peserta).
+  useEffect(() => {
+    const n = searchParams.get('nomor');
+    const t = searchParams.get('token');
+    if (n && t) mulai(n, t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function jawab(pilihan: 'A' | 'B' | 'C' | 'D' | null) {
     if (!soal || busy) return;
@@ -118,6 +138,7 @@ export default function KuisMqkClient() {
         setHasil({ skor: data.skor, benar: data.benar, total: data.total });
         setStep('selesai');
       } else {
+        tampilkanToast('Jawaban terkirim');
         setSoal(data.soal);
         setNomorSoal(data.nomorSoal);
         setTotal(data.total);
@@ -163,6 +184,30 @@ export default function KuisMqkClient() {
 
   return (
     <main style={{ maxWidth: 720, margin: '0 auto', padding: 'clamp(44px, 5vw, 80px) clamp(20px, 4vw, 40px)' }}>
+      <div
+        role="status"
+        aria-live="polite"
+        style={{
+          position: 'fixed',
+          top: 20,
+          left: '50%',
+          transform: `translateX(-50%) translateY(${toast ? '0' : '-16px'})`,
+          zIndex: 200,
+          background: 'var(--ink)',
+          color: 'var(--paper)',
+          fontSize: 13,
+          fontWeight: 600,
+          padding: '12px 20px',
+          borderRadius: 3,
+          boxShadow: '0 8px 24px rgba(36,33,28,0.22)',
+          opacity: toast ? 1 : 0,
+          pointerEvents: 'none',
+          transition: 'opacity 260ms ease, transform 260ms ease',
+        }}
+      >
+        {toast || ' '}
+      </div>
+
       <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--olive)' }}>
         MQK — Babak I
       </div>
@@ -177,7 +222,7 @@ export default function KuisMqkClient() {
             per soal, tidak bisa kembali ke soal sebelumnya, dan kuis hanya dapat dikerjakan satu kali.
             Pastikan koneksi internet stabil sebelum memulai.
           </p>
-          <form onSubmit={mulai} style={{ display: 'grid', gap: 16 }}>
+          <form onSubmit={(e) => { e.preventDefault(); mulai(); }} style={{ display: 'grid', gap: 16 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <label htmlFor="nomor" style={labelStyle}>Nomor pendaftaran</label>
               <input id="nomor" value={nomor} onChange={(e) => setNomor(e.target.value)} placeholder="MS290-MQK-????" style={inputStyle} required />

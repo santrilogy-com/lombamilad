@@ -58,11 +58,11 @@ export const LOMBA: Cabang[] = [
       },
     ],
     prizes: [
-      { juara: 'Juara I', hadiah: 'Rp 1.500.000,- + Medali + Trofi + Sertifikat' },
-      { juara: 'Juara II', hadiah: 'Rp 1.000.000,- + Medali + Trofi + Sertifikat' },
+      { juara: 'Juara I', hadiah: 'Rp 1.000.000,- + Medali + Trofi + Sertifikat' },
+      { juara: 'Juara II', hadiah: 'Rp 750.000,- + Medali + Trofi + Sertifikat' },
       { juara: 'Juara III', hadiah: 'Rp 500.000,- + Medali + Trofi + Sertifikat' },
     ],
-    p: ['Rp 1.500.000', 'Rp 1.000.000', 'Rp 500.000'],
+    p: ['Rp 1.000.000', 'Rp 750.000', 'Rp 500.000'],
     kuota: 100,
   },
   {
@@ -112,11 +112,11 @@ export const LOMBA: Cabang[] = [
       },
     ],
     prizes: [
-      { juara: 'Juara I', hadiah: 'Rp 2.000.000,- + Medali + Trofi + Sertifikat' },
-      { juara: 'Juara II', hadiah: 'Rp 1.500.000,- + Medali + Trofi + Sertifikat' },
+      { juara: 'Juara I', hadiah: 'Rp 3.000.000,- + Medali + Trofi + Sertifikat' },
+      { juara: 'Juara II', hadiah: 'Rp 2.000.000,- + Medali + Trofi + Sertifikat' },
       { juara: 'Juara III', hadiah: 'Rp 1.000.000,- + Medali + Trofi + Sertifikat' },
     ],
-    p: ['Rp 2.000.000', 'Rp 1.500.000', 'Rp 1.000.000'],
+    p: ['Rp 3.000.000', 'Rp 2.000.000', 'Rp 1.000.000'],
     kuota: 100,
   },
   {
@@ -175,12 +175,12 @@ export const LOMBA: Cabang[] = [
   },
   {
     id: 'mqk',
-    name: 'Lomba MQK — Musabaqah Qiraatul Kitab',
+    name: 'Lomba MQK — Musabaqoh Qiroatil Kitab',
     short: 'MQK',
     kicker: 'Hadiah tertinggi',
     deadlineTag: 'Batas pendaftaran: 28 Oktober 2026',
     intro:
-      'Musabaqah membaca kitab untuk utusan lembaga maupun pendaftar mandiri. Materi penyisihan Kitab Fathul-Mu’in Bab Ubudiyah; final membaca dari awal hingga akhir kitab.',
+      'Musabaqoh membaca kitab untuk utusan lembaga maupun pendaftar mandiri. Materi penyisihan Kitab Fathul-Mu’in Bab Ubudiyah; final membaca dari awal hingga akhir kitab.',
     sections: [
       {
         h: 'Persyaratan peserta',
@@ -229,12 +229,12 @@ export const LOMBA: Cabang[] = [
   },
   {
     id: 'mtq',
-    name: 'Lomba MTQ — Musabaqah Tilawatil Qur’an',
+    name: "Lomba MTQ — Musabaqoh Tilawatil Qur’an",
     short: 'MTQ',
     kicker: 'Usia maksimal 18 tahun',
     deadlineTag: 'Batas pendaftaran: 28 Oktober 2026',
     intro:
-      'Musabaqah tilawah dengan materi Juz 1–30 dan Al-Qur’an Rasm Utsmani. Penyisihan daring melalui Zoom, final luring di Pondok Pesantren Sidogiri.',
+      'Musabaqoh tilawah dengan materi Juz 1–30 dan Al-Qur’an Rasm Utsmani. Penyisihan daring melalui Zoom, final luring di Pondok Pesantren Sidogiri.',
     sections: [
       {
         h: 'Persyaratan peserta',
@@ -366,6 +366,6 @@ export const DEADLINE_MAIN = new Date('2026-10-28T23:59:59+07:00').getTime();
 export const STATS = [
   { label: 'Cabang lomba nasional', value: '5' },
   { label: 'Kuota peserta per lomba', value: '100' },
-  { label: 'Total hadiah', value: 'Rp 31,5 Jt' },
+  { label: 'Total hadiah', value: 'Rp 32,25 Jt' },
   { label: 'Final & pengumuman', value: '20 Nov 2026' },
 ];

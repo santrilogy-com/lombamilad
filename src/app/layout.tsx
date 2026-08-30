@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import CompassCursor from '@/components/CompassCursor';
+import HelpFab from '@/components/HelpFab';
 
 export const metadata: Metadata = {
   title: {
@@ -33,16 +34,18 @@ export default function RootLayout({
 }) {
   return (
     <html lang="id" style={{ scrollBehavior: 'smooth' }}>
-      <body>
+      <body style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         <CompassCursor />
+        <HelpFab />
         <TopStripe />
-        {children}
+        <div style={{ flex: 1 }}>{children}</div>
         <div
           aria-hidden="true"
           style={{
             display: 'grid',
             gridTemplateColumns: '8% 1fr 26%',
             height: '10px',
+            flexShrink: 0,
           }}
         >
           <span style={{ background: 'var(--grey)' }} />
