@@ -64,15 +64,10 @@ export default function Hero() {
     >
       <div
         aria-hidden="true"
+        className="hero-orn hero-orn-bawah"
         style={{
-          position: 'absolute',
-          left: '-6%',
-          bottom: '-12%',
-          width: '62%',
-          height: '90%',
           backgroundImage: 'url(/ornamen-bawah.png)',
           backgroundRepeat: 'no-repeat',
-          backgroundSize: 'cover',
           backgroundPosition: 'left bottom',
           opacity: 0.6,
           animation: 'ornamentGlow 11000ms ease-in-out infinite',
@@ -80,15 +75,10 @@ export default function Hero() {
       />
       <div
         aria-hidden="true"
+        className="hero-orn hero-orn-atas"
         style={{
-          position: 'absolute',
-          right: '-4%',
-          top: '-14%',
-          width: '46%',
-          height: '80%',
           backgroundImage: 'url(/ornamen-atas.png)',
           backgroundRepeat: 'no-repeat',
-          backgroundSize: 'cover',
           backgroundPosition: 'right top',
           opacity: 0.55,
           animation: 'ornamentGlow 9500ms ease-in-out infinite 400ms',
