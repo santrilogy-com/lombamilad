@@ -56,9 +56,12 @@ export async function saveFile(
   if (!allowed.includes(file.type)) {
     throw new Error(`Tipe berkas tidak didukung (${file.type || 'unknown'}).`);
   }
-  const maxBytes = 10 * 1024 * 1024; // 10MB
+  // Vercel Serverless Functions membatasi ukuran body request ~4.5MB (di luar
+  // kendali aplikasi). Batas per-berkas dijaga jauh di bawah itu supaya dua
+  // berkas (identitas + submisi) dalam satu request tetap aman terkirim.
+  const maxBytes = 4 * 1024 * 1024; // 4MB
   if (file.size > maxBytes) {
-    throw new Error('Ukuran berkas maksimal 10MB.');
+    throw new Error('Ukuran berkas maksimal 4MB.');
   }
 
   const bytes = Buffer.from(await file.arrayBuffer());

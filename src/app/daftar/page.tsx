@@ -47,6 +47,8 @@ export default function DaftarPage() {
     setUsiaLebih('');
   }
 
+  const MAX_FILE_MB = 4;
+
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError('');
@@ -56,10 +58,31 @@ export default function DaftarPage() {
       return;
     }
     const fd = new FormData(e.currentTarget);
+    const fileIdentitas = fd.get('fileIdentitas');
+    const fileSubmisi = fd.get('fileSubmisi');
+    const maxBytes = MAX_FILE_MB * 1024 * 1024;
+    if (fileIdentitas instanceof File && fileIdentitas.size > maxBytes) {
+      setError(`Ukuran kartu tanda pengenal maksimal ${MAX_FILE_MB}MB. Silakan kompres foto/scan-nya lalu unggah ulang.`);
+      return;
+    }
+    if (fileSubmisi instanceof File && fileSubmisi.size > maxBytes) {
+      setError(`Ukuran berkas submisi maksimal ${MAX_FILE_MB}MB. Silakan kompres berkasnya lalu unggah ulang.`);
+      return;
+    }
     setBusy(true);
     try {
       const res = await fetch('/api/pendaftar', { method: 'POST', body: fd });
-      const data = await res.json();
+      const raw = await res.text();
+      let data: any = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        throw new Error(
+          res.status === 413
+            ? `Berkas terlalu besar untuk dikirim. Maksimal ${MAX_FILE_MB}MB per berkas.`
+            : 'Terjadi kesalahan pada server. Silakan coba lagi.'
+        );
+      }
       if (!res.ok) throw new Error(data?.error || 'Terjadi kesalahan');
       setSent(true);
       setNomor(data?.nomorPendaftaran || '');
@@ -218,7 +241,7 @@ export default function DaftarPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, gridColumn: 'span 2' }}>
               <label htmlFor="fileIdentitas" style={labelStyle}>Kartu tanda pengenal (scan/foto KTP/KTM/KTS)</label>
               <input id="fileIdentitas" name="fileIdentitas" type="file" accept="image/*,.pdf" required style={{ padding: '12px 14px', background: 'var(--paper)', border: '1px dashed rgba(36,33,28,0.28)', borderRadius: 2, fontSize: 13 }} />
-              <div style={{ fontSize: 12, color: 'var(--grey)' }}>JPG, PNG, atau PDF. Maksimal 10MB.</div>
+              <div style={{ fontSize: 12, color: 'var(--grey)' }}>JPG, PNG, atau PDF. Maksimal {MAX_FILE_MB}MB.</div>
             </div>
           </div>
         </div>
