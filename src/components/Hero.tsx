@@ -21,10 +21,19 @@ function useCountdown(target: number) {
   };
 }
 
+const LOGO_LOOP_MS = 8000; // full assembly (~3.9s) plus a hold before it replays
+
 export default function Hero() {
   const { days, hours, minutes, seconds } = useCountdown(DEADLINE_MAIN);
   const tiltZoneRef = useRef<HTMLDivElement>(null);
   const tiltTargetRef = useRef<HTMLDivElement>(null);
+  const [replayKey, setReplayKey] = useState(0);
+
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const t = setInterval(() => setReplayKey((k) => k + 1), LOGO_LOOP_MS);
+    return () => clearInterval(t);
+  }, []);
 
   const handleTiltMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     const zone = tiltZoneRef.current;
@@ -275,16 +284,18 @@ export default function Hero() {
             style={{ position: 'relative', width: '80%', margin: '0 auto' }}
           >
             <div
+              key={replayKey}
               ref={tiltTargetRef}
               id="logo-lockup"
               role="img"
               aria-label="Milad ke-290 Pondok Pesantren Sidogiri — Satu Arah"
-              className="hero-tilt-target logo-shine"
+              className="hero-tilt-target"
               style={{
                 position: 'relative',
                 width: '100%',
                 aspectRatio: '1292 / 736',
                 transformStyle: 'preserve-3d',
+                filter: 'drop-shadow(0 10px 26px rgba(36,33,28,0.16))',
               }}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}

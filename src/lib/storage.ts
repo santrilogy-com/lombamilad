@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import { put, del } from '@vercel/blob';
 
 /**
  * Penyimpanan berkas yang mudah diganti provider (local / vercel-blob / supabase) lewat env.
@@ -50,11 +51,34 @@ export async function saveFile(
     return { url: rel, name: file.name, size: file.size };
   }
 
-  // TODO: implementasi vercel-blob / supabase bila token tersedia
-  throw new Error('STORAGE_PROVIDER "' + STORAGE_PROVIDER + '" belum dikonfigurasi. Gunakan "local".');
+  if (STORAGE_PROVIDER === 'vercel-blob') {
+    const token = process.env.BLOB_READ_WRITE_TOKEN;
+    if (!token) throw new Error('BLOB_READ_WRITE_TOKEN belum diset.');
+    const blob = await put(`${subdir}/${filename}`, bytes, {
+      access: 'public',
+      contentType: file.type,
+      token,
+      addRandomSuffix: false,
+    });
+    // URL blob sudah berisi id acak yang sulit ditebak; klien tetap mengaksesnya
+    // lewat /api/berkas (bukan langsung), lihat proxy di sana.
+    return { url: blob.url, name: file.name, size: file.size };
+  }
+
+  throw new Error('STORAGE_PROVIDER "' + STORAGE_PROVIDER + '" belum dikonfigurasi. Gunakan "local" atau "vercel-blob".');
 }
 
-export function deleteFile(url: string) {
+export async function deleteFile(url: string) {
+  if (/^https?:\/\//.test(url)) {
+    const token = process.env.BLOB_READ_WRITE_TOKEN;
+    if (!token) return;
+    try {
+      await del(url, { token });
+    } catch {
+      /* ignore */
+    }
+    return;
+  }
   try {
     const full = path.join(process.cwd(), url);
     if (fs.existsSync(full)) fs.unlinkSync(full);

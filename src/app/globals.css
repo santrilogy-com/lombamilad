@@ -140,18 +140,6 @@ a.nav-link:hover::after { right: 0; }
   .hero-tilt-target { transition: none !important; transform: none !important; }
 }
 
-/* ===== Hero logo — periodic "catching the light" glow ===== */
-@keyframes logoShine {
-  0%, 100% { filter: drop-shadow(0 10px 26px rgba(36,33,28,0.16)); }
-  50% {
-    filter: drop-shadow(0 10px 26px rgba(36,33,28,0.16)) drop-shadow(0 0 34px rgba(197,182,120,0.6))
-      brightness(1.07);
-  }
-}
-.logo-shine { animation: logoShine 7000ms ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) {
-  .logo-shine { animation: none; }
-}
 
 /* ===== Mobile navigation ===== */
 .nav-toggle { display: none; }

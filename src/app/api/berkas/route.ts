@@ -39,6 +39,11 @@ export async function GET(req: Request) {
   }
 
   const rel = pendaftar.fileIdentitas || '';
+
+  if (/^https?:\/\//.test(rel)) {
+    return serveRemote(rel);
+  }
+
   const full = path.resolve(path.join(process.cwd(), rel));
   const root = path.resolve(process.cwd());
   if (!full.startsWith(root + path.sep)) {
@@ -59,6 +64,33 @@ export async function GET(req: Request) {
       : 'application/octet-stream';
 
   const data = fs.readFileSync(full);
+  return new NextResponse(new Uint8Array(data), {
+    headers: {
+      'Content-Type': mime,
+      'Content-Disposition': 'inline',
+      'Cache-Control': 'private, no-store',
+    },
+  });
+}
+
+/** Proxy berkas dari Vercel Blob agar URL asli tidak pernah terekspos ke klien. */
+async function serveRemote(rawUrl: string) {
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return new NextResponse('Bad request', { status: 400 });
+  }
+  // Batasi hanya ke domain Vercel Blob agar route ini tidak jadi proxy terbuka (SSRF).
+  if (!parsed.hostname.endsWith('.public.blob.vercel-storage.com')) {
+    return new NextResponse('Bad request', { status: 400 });
+  }
+
+  const upstream = await fetch(parsed.toString());
+  if (!upstream.ok) return new NextResponse('Not found', { status: 404 });
+
+  const data = await upstream.arrayBuffer();
+  const mime = upstream.headers.get('content-type') || 'application/octet-stream';
   return new NextResponse(new Uint8Array(data), {
     headers: {
       'Content-Type': mime,
