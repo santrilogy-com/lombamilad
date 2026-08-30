@@ -70,12 +70,12 @@ export default function Hero() {
           bottom: '-12%',
           width: '62%',
           height: '90%',
-          backgroundImage: 'radial-gradient(circle, var(--grey-l) 2.1px, transparent 2.2px)',
-          backgroundSize: '16px 16px',
-          opacity: 0.5,
-          maskImage: 'radial-gradient(ellipse at 20% 85%, black 0%, transparent 68%)',
-          WebkitMaskImage: 'radial-gradient(ellipse at 20% 85%, black 0%, transparent 68%)',
-          animation: 'bloom 11000ms ease-in-out infinite',
+          backgroundImage: 'url(/ornamen-bawah.png)',
+          backgroundRepeat: 'no-repeat',
+          backgroundSize: 'cover',
+          backgroundPosition: 'left bottom',
+          opacity: 0.6,
+          animation: 'ornamentGlow 11000ms ease-in-out infinite',
         }}
       />
       <div
@@ -86,11 +86,12 @@ export default function Hero() {
           top: '-14%',
           width: '46%',
           height: '80%',
-          backgroundImage: 'radial-gradient(circle, var(--olive-l) 2.4px, transparent 2.5px)',
-          backgroundSize: '19px 19px',
-          opacity: 0.45,
-          maskImage: 'radial-gradient(ellipse at 78% 18%, black 0%, transparent 65%)',
-          WebkitMaskImage: 'radial-gradient(ellipse at 78% 18%, black 0%, transparent 65%)',
+          backgroundImage: 'url(/ornamen-atas.png)',
+          backgroundRepeat: 'no-repeat',
+          backgroundSize: 'cover',
+          backgroundPosition: 'right top',
+          opacity: 0.55,
+          animation: 'ornamentGlow 9500ms ease-in-out infinite 400ms',
         }}
       />
 

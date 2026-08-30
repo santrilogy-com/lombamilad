@@ -19,12 +19,13 @@ export default function CTABanner() {
           top: '-20%',
           width: '60%',
           height: '140%',
-          backgroundImage:
-            'radial-gradient(circle, rgba(195,182,139,0.6) 2.4px, transparent 2.5px)',
-          backgroundSize: '20px 20px',
-          opacity: 0.5,
-          maskImage: 'radial-gradient(ellipse at 70% 40%, black, transparent 68%)',
-          WebkitMaskImage: 'radial-gradient(ellipse at 70% 40%, black, transparent 68%)',
+          backgroundImage: 'url(/ornamen-atas.png)',
+          backgroundRepeat: 'no-repeat',
+          backgroundSize: 'cover',
+          backgroundPosition: 'right top',
+          opacity: 0.6,
+          mixBlendMode: 'screen',
+          animation: 'ornamentGlow 10500ms ease-in-out infinite 300ms',
         }}
       />
       <div className="reveal" style={{ position: 'relative', maxWidth: '46ch' }}>

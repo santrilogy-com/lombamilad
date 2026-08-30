@@ -124,12 +124,12 @@ export default function LombaSection() {
             top: -60,
             width: 340,
             height: 340,
-            backgroundImage:
-              'radial-gradient(circle, var(--olive-l) 2.3px, transparent 2.4px)',
-            backgroundSize: '18px 18px',
-            opacity: 0.5,
-            maskImage: 'radial-gradient(circle at 70% 30%, black, transparent 66%)',
-            WebkitMaskImage: 'radial-gradient(circle at 70% 30%, black, transparent 66%)',
+            backgroundImage: 'url(/ornamen-atas.png)',
+            backgroundRepeat: 'no-repeat',
+            backgroundSize: 'cover',
+            backgroundPosition: 'right top',
+            opacity: 0.55,
+            animation: 'ornamentGlow 10000ms ease-in-out infinite 200ms',
           }}
         />
         <div

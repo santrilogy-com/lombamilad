@@ -124,12 +124,12 @@ export default function AlurSection() {
             bottom: -60,
             width: 300,
             height: 300,
-            backgroundImage:
-              'radial-gradient(circle, var(--grey-l) 2.1px, transparent 2.2px)',
-            backgroundSize: '16px 16px',
-            opacity: 0.42,
-            maskImage: 'radial-gradient(circle at 30% 70%, black, transparent 66%)',
-            WebkitMaskImage: 'radial-gradient(circle at 30% 70%, black, transparent 66%)',
+            backgroundImage: 'url(/ornamen-bawah.png)',
+            backgroundRepeat: 'no-repeat',
+            backgroundSize: 'cover',
+            backgroundPosition: 'left bottom',
+            opacity: 0.5,
+            animation: 'ornamentGlow 9000ms ease-in-out infinite 600ms',
           }}
         />
         <div style={{ position: 'relative' }}>
