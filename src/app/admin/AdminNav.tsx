@@ -8,6 +8,7 @@ const links = [
   { href: '/admin', label: 'Dashboard' },
   { href: '/admin/pendaftaran', label: 'Pendaftaran' },
   { href: '/admin/penilaian', label: 'Penilaian' },
+  { href: '/admin/kuis', label: 'Bank Soal (MQK)' },
   { href: '/admin/kapasitas', label: 'Kuota & Status' },
   { href: '/admin/pengumuman', label: 'Pengumuman' },
 ];

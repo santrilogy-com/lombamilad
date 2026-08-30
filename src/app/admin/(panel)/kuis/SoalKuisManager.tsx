@@ -1,0 +1,357 @@
+'use client';
+
+import { useState } from 'react';
+
+type Soal = {
+  id: string;
+  soal: string;
+  pilihanA: string;
+  pilihanB: string;
+  pilihanC: string;
+  pilihanD: string;
+  jawaban: string;
+  kategori: string | null;
+  aktif: boolean;
+  urutan: number;
+};
+
+type Attempt = {
+  id: string;
+  nomorPendaftaran: string;
+  nama: string;
+  status: string;
+  skor: number | null;
+  soalSaatIni: number;
+  totalSoal: number;
+  jumlahMencurigakan: number;
+  mulaiAt: string | null;
+  selesaiAt: string | null;
+};
+
+type Ringkasan = { belumMulai: number; sedang: number; selesai: number; rataSkor: number | null };
+
+const inputStyle = {
+  height: 40,
+  padding: '0 10px',
+  background: 'var(--paper)',
+  border: '1px solid rgba(36,33,28,0.18)',
+  borderRadius: 2,
+  fontSize: 13.5,
+  color: 'var(--ink)',
+} as const;
+
+const btnStyle = {
+  height: 40,
+  padding: '0 16px',
+  background: 'var(--olive)',
+  color: '#fff',
+  border: 0,
+  borderRadius: 2,
+  fontSize: 13,
+  fontWeight: 600,
+  cursor: 'pointer',
+} as const;
+
+const cardStyle = { background: 'var(--paper2)', borderRadius: 4, padding: '20px 22px' };
+
+export default function SoalKuisManager({
+  soalAwal,
+  statusAwal,
+  ringkasan,
+  attempts,
+}: {
+  soalAwal: Soal[];
+  statusAwal: 'dibuka' | 'tertutup';
+  ringkasan: Ringkasan;
+  attempts: Attempt[];
+}) {
+  const [soal, setSoal] = useState<Soal[]>(soalAwal);
+  const [statusKuis, setStatusKuis] = useState(statusAwal);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const [tambah, setTambah] = useState({ soal: '', pilihanA: '', pilihanB: '', pilihanC: '', pilihanD: '', jawaban: 'A', kategori: '' });
+  const [teksImpor, setTeksImpor] = useState('');
+  const [hasilImpor, setHasilImpor] = useState<{ berhasil: number; gagal: { baris: number; alasan: string }[] } | null>(null);
+
+  function tampilkanPesan(t: string) {
+    setMsg(t);
+    setTimeout(() => setMsg(''), 3000);
+  }
+
+  async function ubahStatusKuis(status: 'dibuka' | 'tertutup') {
+    setBusy(true);
+    try {
+      const res = await fetch('/api/admin/kuis/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) throw new Error('Gagal mengubah status');
+      setStatusKuis(status);
+      tampilkanPesan(status === 'dibuka' ? 'Kuis dibuka untuk peserta.' : 'Kuis ditutup.');
+    } catch (e: any) {
+      tampilkanPesan(e.message || 'Gagal');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function tambahSoal(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      const res = await fetch('/api/admin/soal-kuis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...tambah, urutan: soal.length }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Gagal menambah soal');
+      setSoal((s) => [...s, data.soal]);
+      setTambah({ soal: '', pilihanA: '', pilihanB: '', pilihanC: '', pilihanD: '', jawaban: 'A', kategori: '' });
+      tampilkanPesan('Soal ditambahkan.');
+    } catch (e: any) {
+      tampilkanPesan(e.message || 'Gagal');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggleAktif(id: string, aktif: boolean) {
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/admin/soal-kuis/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ aktif }),
+      });
+      if (!res.ok) throw new Error('Gagal mengubah soal');
+      setSoal((s) => s.map((x) => (x.id === id ? { ...x, aktif } : x)));
+    } catch (e: any) {
+      tampilkanPesan(e.message || 'Gagal');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function hapusSoal(id: string) {
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/admin/soal-kuis/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Gagal menghapus soal');
+      setSoal((s) => s.filter((x) => x.id !== id));
+      tampilkanPesan('Soal dihapus.');
+    } catch (e: any) {
+      tampilkanPesan(e.message || 'Gagal');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function imporMassal() {
+    setBusy(true);
+    setHasilImpor(null);
+    try {
+      const res = await fetch('/api/admin/soal-kuis/impor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teks: teksImpor }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Gagal mengimpor');
+      setHasilImpor(data);
+      if (data.berhasil > 0) {
+        const listRes = await fetch('/api/admin/soal-kuis');
+        const listData = await listRes.json();
+        setSoal(listData.soal);
+        setTeksImpor('');
+      }
+      tampilkanPesan(`${data.berhasil} soal berhasil diimpor.`);
+    } catch (e: any) {
+      tampilkanPesan(e.message || 'Gagal');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const aktifCount = soal.filter((s) => s.aktif).length;
+
+  return (
+    <div style={{ display: 'grid', gap: 28 }}>
+      {msg ? (
+        <div style={{ background: 'var(--olive-p)', color: '#453d24', fontSize: 13, borderRadius: 2, padding: '12px 16px' }}>{msg}</div>
+      ) : null}
+
+      {/* Status kuis & ringkasan */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px,1fr))', gap: 14 }}>
+        <div style={cardStyle}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--grey)' }}>Akses kuis</div>
+          <div style={{ fontFamily: 'var(--disp)', fontSize: 20, margin: '10px 0 14px' }}>
+            {statusKuis === 'dibuka' ? 'Dibuka' : 'Tertutup'} · {aktifCount} soal aktif
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button disabled={busy || statusKuis === 'dibuka'} onClick={() => ubahStatusKuis('dibuka')} style={{ ...btnStyle, background: statusKuis === 'dibuka' ? 'rgba(36,33,28,0.15)' : 'var(--olive)' }}>
+              Buka
+            </button>
+            <button disabled={busy || statusKuis === 'tertutup'} onClick={() => ubahStatusKuis('tertutup')} style={{ ...btnStyle, background: statusKuis === 'tertutup' ? 'rgba(36,33,28,0.15)' : '#a94442' }}>
+              Tutup
+            </button>
+          </div>
+        </div>
+        <div style={cardStyle}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--grey)' }}>Belum mulai</div>
+          <div style={{ fontFamily: 'var(--disp)', fontSize: 30, marginTop: 8 }}>{ringkasan.belumMulai}</div>
+        </div>
+        <div style={cardStyle}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--grey)' }}>Sedang mengerjakan</div>
+          <div style={{ fontFamily: 'var(--disp)', fontSize: 30, marginTop: 8 }}>{ringkasan.sedang}</div>
+        </div>
+        <div style={cardStyle}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--grey)' }}>Selesai · rata-rata</div>
+          <div style={{ fontFamily: 'var(--disp)', fontSize: 30, marginTop: 8 }}>
+            {ringkasan.selesai} <span style={{ fontSize: 15, color: 'var(--grey)' }}>· {ringkasan.rataSkor ?? '–'}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Impor massal */}
+      <div style={cardStyle}>
+        <h3 style={{ fontFamily: 'var(--disp)', fontWeight: 400, fontSize: 17, margin: '0 0 10px' }}>Impor soal massal</h3>
+        <p style={{ fontSize: 12.5, color: '#5a554c', margin: '0 0 10px' }}>
+          Satu baris per soal, format: <code>Soal|PilihanA|PilihanB|PilihanC|PilihanD|Jawaban|Kategori</code> (Kategori opsional).
+        </p>
+        <textarea
+          value={teksImpor}
+          onChange={(e) => setTeksImpor(e.target.value)}
+          rows={6}
+          placeholder={'Apa hukum wudhu bagi orang yang berhadats?|Wajib|Sunnah|Makruh|Mubah|A|Fikih'}
+          style={{ width: '100%', padding: 10, fontSize: 12.5, fontFamily: 'monospace', border: '1px solid rgba(36,33,28,0.18)', borderRadius: 2, marginBottom: 10 }}
+        />
+        <button disabled={busy || !teksImpor.trim()} onClick={imporMassal} style={btnStyle}>
+          Impor
+        </button>
+        {hasilImpor ? (
+          <div style={{ marginTop: 12, fontSize: 12.5 }}>
+            <div style={{ color: '#2e7d2e', fontWeight: 600 }}>{hasilImpor.berhasil} baris berhasil diimpor.</div>
+            {hasilImpor.gagal.length > 0 ? (
+              <ul style={{ margin: '6px 0 0', paddingLeft: 18, color: '#a94442' }}>
+                {hasilImpor.gagal.map((g, i) => (
+                  <li key={i}>Baris {g.baris}: {g.alasan}</li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+
+      {/* Tambah satu soal */}
+      <div style={cardStyle}>
+        <h3 style={{ fontFamily: 'var(--disp)', fontWeight: 400, fontSize: 17, margin: '0 0 14px' }}>Tambah soal</h3>
+        <form onSubmit={tambahSoal} style={{ display: 'grid', gap: 10 }}>
+          <textarea
+            value={tambah.soal}
+            onChange={(e) => setTambah((t) => ({ ...t, soal: e.target.value }))}
+            placeholder="Pertanyaan"
+            required
+            rows={2}
+            style={{ ...inputStyle, height: 'auto', padding: 10, fontFamily: 'inherit' }}
+          />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 10 }}>
+            <input value={tambah.pilihanA} onChange={(e) => setTambah((t) => ({ ...t, pilihanA: e.target.value }))} placeholder="Pilihan A" required style={inputStyle} />
+            <input value={tambah.pilihanB} onChange={(e) => setTambah((t) => ({ ...t, pilihanB: e.target.value }))} placeholder="Pilihan B" required style={inputStyle} />
+            <input value={tambah.pilihanC} onChange={(e) => setTambah((t) => ({ ...t, pilihanC: e.target.value }))} placeholder="Pilihan C" required style={inputStyle} />
+            <input value={tambah.pilihanD} onChange={(e) => setTambah((t) => ({ ...t, pilihanD: e.target.value }))} placeholder="Pilihan D" required style={inputStyle} />
+          </div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <select value={tambah.jawaban} onChange={(e) => setTambah((t) => ({ ...t, jawaban: e.target.value }))} style={inputStyle}>
+              {['A', 'B', 'C', 'D'].map((h) => (
+                <option key={h} value={h}>Jawaban benar: {h}</option>
+              ))}
+            </select>
+            <input value={tambah.kategori} onChange={(e) => setTambah((t) => ({ ...t, kategori: e.target.value }))} placeholder="Kategori (nahwu/fikih/sharaf)" style={inputStyle} />
+            <button type="submit" disabled={busy} style={btnStyle}>Tambah</button>
+          </div>
+        </form>
+      </div>
+
+      {/* Daftar soal */}
+      <div style={cardStyle}>
+        <h3 style={{ fontFamily: 'var(--disp)', fontWeight: 400, fontSize: 17, margin: '0 0 14px' }}>Bank soal ({soal.length})</h3>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
+            <thead>
+              <tr style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--grey)', textAlign: 'left' }}>
+                <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Soal</th>
+                <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Jawaban</th>
+                <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Kategori</th>
+                <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Aktif</th>
+                <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }} />
+              </tr>
+            </thead>
+            <tbody>
+              {soal.map((s) => (
+                <tr key={s.id}>
+                  <td style={{ padding: '10px', borderBottom: '1px solid var(--line)', fontSize: 13, maxWidth: 360 }}>{s.soal}</td>
+                  <td style={{ padding: '10px', borderBottom: '1px solid var(--line)', fontSize: 13, fontWeight: 700 }}>{s.jawaban}</td>
+                  <td style={{ padding: '10px', borderBottom: '1px solid var(--line)', fontSize: 12.5, color: '#6b665c' }}>{s.kategori || '–'}</td>
+                  <td style={{ padding: '10px', borderBottom: '1px solid var(--line)' }}>
+                    <input type="checkbox" checked={s.aktif} disabled={busy} onChange={(e) => toggleAktif(s.id, e.target.checked)} />
+                  </td>
+                  <td style={{ padding: '10px', borderBottom: '1px solid var(--line)' }}>
+                    <button onClick={() => hapusSoal(s.id)} disabled={busy} style={{ fontSize: 12, color: '#a94442', background: 'transparent', border: 0, cursor: 'pointer', fontWeight: 600 }}>
+                      Hapus
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {soal.length === 0 ? (
+                <tr>
+                  <td colSpan={5} style={{ padding: '16px 10px', fontSize: 13, color: '#5a554c' }}>Belum ada soal.</td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Monitoring peserta */}
+      <div style={cardStyle}>
+        <h3 style={{ fontFamily: 'var(--disp)', fontWeight: 400, fontSize: 17, margin: '0 0 14px' }}>Progres peserta</h3>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
+            <thead>
+              <tr style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--grey)', textAlign: 'left' }}>
+                <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Peserta</th>
+                <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Status</th>
+                <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Progres</th>
+                <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Skor</th>
+                <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Mencurigakan</th>
+              </tr>
+            </thead>
+            <tbody>
+              {attempts.map((a) => (
+                <tr key={a.id}>
+                  <td style={{ padding: '10px', borderBottom: '1px solid var(--line)', fontSize: 13 }}>
+                    <div style={{ fontWeight: 600 }}>{a.nama}</div>
+                    <div style={{ fontSize: 12, color: '#6b665c' }}>{a.nomorPendaftaran}</div>
+                  </td>
+                  <td style={{ padding: '10px', borderBottom: '1px solid var(--line)', fontSize: 12.5 }}>{a.status === 'SEDANG' ? 'Sedang mengerjakan' : 'Selesai'}</td>
+                  <td style={{ padding: '10px', borderBottom: '1px solid var(--line)', fontSize: 12.5 }}>{a.soalSaatIni}/{a.totalSoal}</td>
+                  <td style={{ padding: '10px', borderBottom: '1px solid var(--line)', fontSize: 13, fontWeight: 700 }}>{a.skor ?? '–'}</td>
+                  <td style={{ padding: '10px', borderBottom: '1px solid var(--line)', fontSize: 12.5, color: a.jumlahMencurigakan > 0 ? '#a94442' : 'inherit' }}>
+                    {a.jumlahMencurigakan}
+                  </td>
+                </tr>
+              ))}
+              {attempts.length === 0 ? (
+                <tr>
+                  <td colSpan={5} style={{ padding: '16px 10px', fontSize: 13, color: '#5a554c' }}>Belum ada peserta yang memulai kuis.</td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}

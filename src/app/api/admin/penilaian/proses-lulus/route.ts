@@ -20,7 +20,8 @@ export async function POST() {
     include: { nilai: true },
   });
 
-  const cabangIds = [...new Set(peserta.map((p) => p.cabangId))];
+  // MQK punya alur dua-tahap tersendiri (lihat /api/admin/kuis/proses-babak1 & proses-babak2)
+  const cabangIds = [...new Set(peserta.map((p) => p.cabangId))].filter((c) => c !== 'mqk');
 
   const result: Record<string, { lolos: string[]; gugur: string[]; belumDinilai: number }> = {};
 

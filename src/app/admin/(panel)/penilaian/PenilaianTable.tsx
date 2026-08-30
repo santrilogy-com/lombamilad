@@ -11,8 +11,10 @@ type Row = {
   cabangNama: string;
   status: string;
   nilaiPenyisihan: number | null;
+  nilaiBabak2: number | null;
   nilaiFinal: number | null;
   peringkatPenyisihan: number | null;
+  peringkatBabak2: number | null;
   peringkatFinal: number | null;
 };
 
@@ -49,7 +51,7 @@ export default function PenilaianTable({
     return Array.from(g.entries());
   }, [rows]);
 
-  async function saveNilai(id: string, field: 'nilaiPenyisihan' | 'nilaiFinal', v: number | null) {
+  async function saveNilai(id: string, field: 'nilaiPenyisihan' | 'nilaiBabak2' | 'nilaiFinal', v: number | null) {
     setBusy(true);
     try {
       const res = await fetch(`/api/admin/pendaftar/${id}`, {
@@ -89,19 +91,58 @@ export default function PenilaianTable({
     }
   }
 
+  async function prosesMqk(tahap: 'babak1' | 'babak2') {
+    setBusy(true);
+    setMsg('');
+    try {
+      setMsg(tahap === 'babak1' ? 'Memproses top 10 Babak I...' : 'Memproses top 5 Babak II...');
+      const res = await fetch(`/api/admin/kuis/proses-${tahap}`, { method: 'POST' });
+      const data = await res.json();
+      if (data?.ok) {
+        setMsg('Berhasil diproses. Muat ulang halaman untuk melihat hasil.');
+      } else {
+        setMsg(data?.error || 'Gagal memproses');
+      }
+      setTimeout(() => setMsg(''), 4000);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, marginBottom: 18, flexWrap: 'wrap' }}>
         <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--grey)' }}>
           Tahap: {tahap === 'penyisihan' ? 'Penyisihan' : 'Final'} · {cabangId ? rows.filter((r) => r.cabangId === cabangId).length : rows.length} peserta
         </div>
-        <button
-          onClick={prosesKelulusan}
-          disabled={busy}
-          style={{ height: 42, padding: '0 20px', background: 'var(--olive)', color: '#fff', border: 0, borderRadius: 2, fontSize: 13.5, fontWeight: 600, cursor: busy ? 'wait' : 'pointer' }}
-        >
-          {busy ? 'Memproses...' : 'Proses Kelulusan (top 5 → final)'}
-        </button>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          {cabangId === 'mqk' ? (
+            <>
+              <button
+                onClick={() => prosesMqk('babak1')}
+                disabled={busy}
+                style={{ height: 42, padding: '0 18px', background: 'var(--olive)', color: '#fff', border: 0, borderRadius: 2, fontSize: 13, fontWeight: 600, cursor: busy ? 'wait' : 'pointer' }}
+              >
+                Proses Babak I → II (top 10)
+              </button>
+              <button
+                onClick={() => prosesMqk('babak2')}
+                disabled={busy}
+                style={{ height: 42, padding: '0 18px', background: 'var(--olive-d)', color: '#fff', border: 0, borderRadius: 2, fontSize: 13, fontWeight: 600, cursor: busy ? 'wait' : 'pointer' }}
+              >
+                Proses Babak II → Final (top 5)
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={prosesKelulusan}
+              disabled={busy}
+              style={{ height: 42, padding: '0 20px', background: 'var(--olive)', color: '#fff', border: 0, borderRadius: 2, fontSize: 13.5, fontWeight: 600, cursor: busy ? 'wait' : 'pointer' }}
+            >
+              {busy ? 'Memproses...' : 'Proses Kelulusan (top 5 → final)'}
+            </button>
+          )}
+        </div>
       </div>
 
       {msg ? (
@@ -123,6 +164,12 @@ export default function PenilaianTable({
                   <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Nama</th>
                   <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Nilai Penyisihan</th>
                   <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Peringkat</th>
+                  {cid === 'mqk' ? (
+                    <>
+                      <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Nilai Babak II</th>
+                      <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Peringkat II</th>
+                    </>
+                  ) : null}
                   <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Nilai Final</th>
                   <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Status</th>
                 </tr>
@@ -139,6 +186,14 @@ export default function PenilaianTable({
                       <NilaiInput value={p.nilaiPenyisihan} disabled={busy} onChange={(v) => saveNilai(p.id, 'nilaiPenyisihan', v)} />
                     </td>
                     <td style={{ padding: '10px', borderBottom: '1px solid var(--line)', fontSize: 13 }}>{p.peringkatPenyisihan ?? '–'}</td>
+                    {cid === 'mqk' ? (
+                      <>
+                        <td style={{ padding: '10px', borderBottom: '1px solid var(--line)' }}>
+                          <NilaiInput value={p.nilaiBabak2} disabled={busy} onChange={(v) => saveNilai(p.id, 'nilaiBabak2', v)} />
+                        </td>
+                        <td style={{ padding: '10px', borderBottom: '1px solid var(--line)', fontSize: 13 }}>{p.peringkatBabak2 ?? '–'}</td>
+                      </>
+                    ) : null}
                     <td style={{ padding: '10px', borderBottom: '1px solid var(--line)' }}>
                       <NilaiInput value={p.nilaiFinal} disabled={busy} onChange={(v) => saveNilai(p.id, 'nilaiFinal', v)} />
                     </td>

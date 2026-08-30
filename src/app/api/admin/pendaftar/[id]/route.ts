@@ -49,6 +49,13 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     }
     nilaiUpdate = { ...(nilaiUpdate || {}), nilaiPenyisihan: v };
   }
+  if (body.nilaiBabak2 !== undefined) {
+    const v = Number(body.nilaiBabak2);
+    if (v < 0 || v > 100 || Number.isNaN(v)) {
+      return NextResponse.json({ error: 'Nilai Babak II harus 0–100' }, { status: 400 });
+    }
+    nilaiUpdate = { ...(nilaiUpdate || {}), nilaiBabak2: v };
+  }
   if (body.nilaiFinal !== undefined) {
     const v = Number(body.nilaiFinal);
     if (v < 0 || v > 100 || Number.isNaN(v)) {
@@ -58,6 +65,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
   if (body.peringkatPenyisihan !== undefined) {
     nilaiUpdate = { ...(nilaiUpdate || {}), peringkatPenyisihan: body.peringkatPenyisihan ? Number(body.peringkatPenyisihan) : null };
+  }
+  if (body.peringkatBabak2 !== undefined) {
+    nilaiUpdate = { ...(nilaiUpdate || {}), peringkatBabak2: body.peringkatBabak2 ? Number(body.peringkatBabak2) : null };
   }
   if (body.peringkatFinal !== undefined) {
     nilaiUpdate = { ...(nilaiUpdate || {}), peringkatFinal: body.peringkatFinal ? Number(body.peringkatFinal) : null };

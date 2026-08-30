@@ -1,0 +1,272 @@
+'use client';
+
+import { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+
+type Soal = {
+  id: string;
+  soal: string;
+  pilihanA: string;
+  pilihanB: string;
+  pilihanC: string;
+  pilihanD: string;
+  kategori: string | null;
+};
+
+type SoalResponse =
+  | {
+      selesai: false;
+      soal: Soal;
+      nomorSoal: number;
+      total: number;
+      sisaDetik: number;
+      jumlahMencurigakan: number;
+    }
+  | { selesai: true; skor: number | null; benar: number; total: number };
+
+type Step = 'login' | 'sedang' | 'selesai';
+
+const labelStyle = {
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: '0.12em',
+  textTransform: 'uppercase' as const,
+  color: 'var(--grey)',
+};
+const inputStyle = {
+  height: 48,
+  padding: '0 14px',
+  background: 'var(--paper)',
+  border: '1px solid rgba(36,33,28,0.18)',
+  borderRadius: 2,
+  fontSize: 14,
+  color: 'var(--ink)',
+  outline: 'none',
+} as const;
+
+export default function KuisMqkClient() {
+  const [step, setStep] = useState<Step>('login');
+  const [nomor, setNomor] = useState('');
+  const [token, setToken] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const [soal, setSoal] = useState<Soal | null>(null);
+  const [nomorSoal, setNomorSoal] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [sisaDetik, setSisaDetik] = useState(0);
+  const [hasil, setHasil] = useState<{ skor: number | null; benar: number; total: number } | null>(null);
+
+  const credRef = useRef({ nomor: '', token: '' });
+  const lapoRef = useRef(0);
+
+  const muatSoal = useCallback(async () => {
+    const { nomor: n, token: t } = credRef.current;
+    const res = await fetch(`/api/kuis/soal?${new URLSearchParams({ nomor: n, token: t })}`);
+    const data: SoalResponse | { error: string } = await res.json();
+    if (!res.ok || 'error' in data) {
+      setError((data as any)?.error || 'Terjadi kesalahan memuat soal.');
+      return;
+    }
+    if (data.selesai) {
+      setHasil({ skor: data.skor, benar: data.benar, total: data.total });
+      setStep('selesai');
+    } else {
+      setSoal(data.soal);
+      setNomorSoal(data.nomorSoal);
+      setTotal(data.total);
+      setSisaDetik(data.sisaDetik);
+      setStep('sedang');
+    }
+  }, []);
+
+  async function mulai(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    setBusy(true);
+    try {
+      const res = await fetch('/api/kuis/mulai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nomor, token }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Tidak dapat memulai kuis.');
+      credRef.current = { nomor: nomor.trim().toUpperCase(), token: token.trim() };
+      await muatSoal();
+    } catch (err: any) {
+      setError(err?.message || 'Terjadi kesalahan.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function jawab(pilihan: 'A' | 'B' | 'C' | 'D' | null) {
+    if (!soal || busy) return;
+    setBusy(true);
+    setError('');
+    try {
+      const { nomor: n, token: t } = credRef.current;
+      const res = await fetch('/api/kuis/jawab', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nomor: n, token: t, soalId: soal.id, pilihan }),
+      });
+      const data: SoalResponse | { error: string } = await res.json();
+      if (!res.ok || 'error' in data) throw new Error((data as any)?.error || 'Gagal mengirim jawaban.');
+      if (data.selesai) {
+        setHasil({ skor: data.skor, benar: data.benar, total: data.total });
+        setStep('selesai');
+      } else {
+        setSoal(data.soal);
+        setNomorSoal(data.nomorSoal);
+        setTotal(data.total);
+        setSisaDetik(data.sisaDetik);
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Terjadi kesalahan.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Timer lokal per detik — hanya kosmetik, waktu sesungguhnya divalidasi di server.
+  useEffect(() => {
+    if (step !== 'sedang') return;
+    if (sisaDetik <= 0) {
+      muatSoal();
+      return;
+    }
+    const t = setTimeout(() => setSisaDetik((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [step, sisaDetik, muatSoal]);
+
+  // Lapor bila peserta pindah tab / minimize saat kuis berlangsung.
+  useEffect(() => {
+    if (step !== 'sedang') return;
+    function onVisibility() {
+      if (document.hidden) {
+        const now = Date.now();
+        if (now - lapoRef.current < 3000) return;
+        lapoRef.current = now;
+        const { nomor: n, token: t } = credRef.current;
+        fetch('/api/kuis/mencurigakan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nomor: n, token: t }),
+        }).catch(() => {});
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [step]);
+
+  return (
+    <main style={{ maxWidth: 720, margin: '0 auto', padding: 'clamp(44px, 5vw, 80px) clamp(20px, 4vw, 40px)' }}>
+      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--olive)' }}>
+        MQK — Babak I
+      </div>
+      <h1 style={{ fontFamily: 'var(--disp)', fontWeight: 300, fontSize: 'clamp(32px, 4vw, 52px)', letterSpacing: '-0.045em', margin: '16px 0 10px' }}>
+        Kuis Penyisihan
+      </h1>
+
+      {step === 'login' ? (
+        <>
+          <p style={{ fontSize: 15, lineHeight: 1.6, color: '#4b4740', margin: '0 0 32px' }}>
+            50 soal nahwu, fikih, dan sharaf dari Kitab Fathul-Mu&rsquo;in Bab Ubudiyah. Waktu 15 detik
+            per soal, tidak bisa kembali ke soal sebelumnya, dan kuis hanya dapat dikerjakan satu kali.
+            Pastikan koneksi internet stabil sebelum memulai.
+          </p>
+          <form onSubmit={mulai} style={{ display: 'grid', gap: 16 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <label htmlFor="nomor" style={labelStyle}>Nomor pendaftaran</label>
+              <input id="nomor" value={nomor} onChange={(e) => setNomor(e.target.value)} placeholder="MS290-MQK-????" style={inputStyle} required />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <label htmlFor="token" style={labelStyle}>Token</label>
+              <input id="token" value={token} onChange={(e) => setToken(e.target.value)} placeholder="8 karakter (mis. 3KZ7MA2P)" style={inputStyle} required />
+            </div>
+            <button type="submit" disabled={busy} style={{ height: 50, padding: '0 28px', background: 'var(--ink)', color: 'var(--paper)', border: 0, borderRadius: 2, fontSize: 14, fontWeight: 600, cursor: busy ? 'wait' : 'pointer', justifySelf: 'start' }}>
+              {busy ? 'Memeriksa...' : 'Mulai Kuis'}
+            </button>
+          </form>
+        </>
+      ) : null}
+
+      {step === 'sedang' && soal ? (
+        <div style={{ background: 'var(--paper2)', borderRadius: 4, padding: 'clamp(24px, 3vw, 36px)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 20 }}>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--olive-d)' }}>
+              Soal {nomorSoal} / {total}
+            </span>
+            <span
+              style={{
+                fontFamily: 'var(--disp)',
+                fontSize: 22,
+                fontWeight: 500,
+                color: sisaDetik <= 5 ? '#a94442' : 'var(--ink)',
+                minWidth: 40,
+                textAlign: 'right',
+              }}
+            >
+              {sisaDetik}s
+            </span>
+          </div>
+          <div style={{ height: 5, background: 'rgba(36,33,28,0.1)', borderRadius: 99, marginBottom: 24, overflow: 'hidden' }}>
+            <div style={{ height: '100%', background: sisaDetik <= 5 ? '#a94442' : 'var(--olive)', width: `${(sisaDetik / 15) * 100}%`, transition: 'width 1s linear' }} />
+          </div>
+
+          <div style={{ fontSize: 17, lineHeight: 1.55, marginBottom: 24 }}>{soal.soal}</div>
+
+          <div style={{ display: 'grid', gap: 10 }}>
+            {(['A', 'B', 'C', 'D'] as const).map((huruf) => (
+              <button
+                key={huruf}
+                type="button"
+                disabled={busy}
+                onClick={() => jawab(huruf)}
+                style={{
+                  textAlign: 'left',
+                  padding: '14px 16px',
+                  background: 'var(--paper)',
+                  border: '1px solid rgba(36,33,28,0.16)',
+                  borderRadius: 2,
+                  fontSize: 14.5,
+                  cursor: busy ? 'wait' : 'pointer',
+                  display: 'flex',
+                  gap: 12,
+                }}
+              >
+                <span style={{ fontWeight: 700, color: 'var(--olive-d)' }}>{huruf}.</span>
+                <span>{soal[`pilihan${huruf}` as const]}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {step === 'selesai' && hasil ? (
+        <div style={{ background: 'var(--paper2)', borderRadius: 4, padding: 'clamp(24px, 3vw, 36px)' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--grey)' }}>
+            Kuis selesai
+          </div>
+          <div style={{ fontFamily: 'var(--disp)', fontWeight: 300, fontSize: 44, margin: '10px 0' }}>{hasil.skor ?? '–'}</div>
+          <div style={{ fontSize: 14, color: '#4b4740' }}>
+            Benar {hasil.benar} dari {hasil.total} soal.
+          </div>
+          <p style={{ fontSize: 13.5, lineHeight: 1.6, color: '#5a554c', marginTop: 18 }}>
+            Terima kasih telah mengerjakan Kuis Babak I. 10 peserta dengan nilai tertinggi akan
+            diumumkan oleh panitia dan lanjut ke Babak II. Pantau status Anda melalui{' '}
+            <Link href="/cek-status" style={{ fontWeight: 600 }}>Cek Status</Link>.
+          </p>
+        </div>
+      ) : null}
+
+      {error ? (
+        <div style={{ marginTop: 20, background: '#f4dede', borderLeft: '3px solid #a94442', borderRadius: 2, padding: '14px 16px', fontSize: 13, color: '#7a2f2d' }}>
+          {error}
+        </div>
+      ) : null}
+    </main>
+  );
+}

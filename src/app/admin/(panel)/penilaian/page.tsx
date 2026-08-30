@@ -32,8 +32,10 @@ export default async function AdminPenilaianPage({
     cabangNama: LOMBA.find((c) => c.id === p.cabangId)?.name || p.cabangId,
     status: p.status,
     nilaiPenyisihan: p.nilai?.nilaiPenyisihan ?? null,
+    nilaiBabak2: p.nilai?.nilaiBabak2 ?? null,
     nilaiFinal: p.nilai?.nilaiFinal ?? null,
     peringkatPenyisihan: p.nilai?.peringkatPenyisihan ?? null,
+    peringkatBabak2: p.nilai?.peringkatBabak2 ?? null,
     peringkatFinal: p.nilai?.peringkatFinal ?? null,
   }));
 

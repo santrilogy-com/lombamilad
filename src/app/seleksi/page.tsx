@@ -103,7 +103,23 @@ export default async function SeleksiPage() {
           )}
         </section>
 
-        <div style={{ marginTop: 48, padding: '28px 32px', background: 'var(--ink)', color: 'var(--paper)', borderRadius: 4 }}>
+        <div style={{ marginTop: 48, padding: '28px 32px', background: 'var(--olive-p)', borderRadius: 4 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--olive-d)' }}>
+            Peserta MQK
+          </div>
+          <div style={{ fontFamily: 'var(--disp)', fontWeight: 300, fontSize: 'clamp(20px,2.2vw,28px)', letterSpacing: '-0.03em', margin: '8px 0 4px', color: 'var(--ink)' }}>
+            Kuis Penyisihan Babak I
+          </div>
+          <p style={{ fontSize: 14, color: '#4b4740', margin: '0 0 16px', maxWidth: '58ch' }}>
+            50 soal nahwu, fikih, dan sharaf, 15 detik per soal. Kuis hanya dapat dikerjakan satu kali —
+            pastikan Anda siap sebelum memulai.
+          </p>
+          <Link href="/kuis-mqk" style={{ display: 'inline-flex', alignItems: 'center', height: 48, padding: '0 24px', background: 'var(--ink)', color: 'var(--paper)', fontSize: 14, fontWeight: 600, borderRadius: 2 }}>
+            Mulai Kuis MQK →
+          </Link>
+        </div>
+
+        <div style={{ marginTop: 20, padding: '28px 32px', background: 'var(--ink)', color: 'var(--paper)', borderRadius: 4 }}>
           <div style={{ fontFamily: 'var(--disp)', fontWeight: 300, fontSize: 'clamp(20px,2.2vw,28px)', letterSpacing: '-0.03em' }}>
             Ingin memastikan status Anda?
           </div>

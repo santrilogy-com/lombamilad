@@ -66,14 +66,17 @@ model Pendaftar {
 
   nilai           Nilai?
   cabang          Cabang           @relation(fields: [cabangId], references: [id])
+  kuisAttempt     KuisAttempt?
 }
 
 model Nilai {
   id            String   @id @default(cuid())
   pendaftarId   String   @unique
   nilaiPenyisihan Float?
+  nilaiBabak2   Float?
   nilaiFinal    Float?
   peringkatPenyisihan Int?
+  peringkatBabak2 Int?
   peringkatFinal Int?
   catatan       String?
   dinilaiOleh   String?
@@ -90,4 +93,38 @@ model Cabang {
   aktif    Boolean @default(true)
 
   pendaftar Pendaftar[]
+}
+
+model SoalKuis {
+  id        String   @id @default(cuid())
+  cabangId  String   @default("mqk")
+  soal      String
+  pilihanA  String
+  pilihanB  String
+  pilihanC  String
+  pilihanD  String
+  jawaban   String
+  kategori  String?
+  aktif     Boolean  @default(true)
+  urutan    Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model KuisAttempt {
+  id                 String    @id @default(cuid())
+  pendaftarId        String    @unique
+  status             String    @default("BELUM_MULAI")
+  soalOrder          Json      @default("[]")
+  jawaban            Json      @default("{}")
+  skor               Float?
+  soalSaatIni        Int       @default(0)
+  batasWaktuSoal     DateTime?
+  mulaiAt            DateTime?
+  selesaiAt          DateTime?
+  jumlahMencurigakan Int       @default(0)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  pendaftar          Pendaftar @relation(fields: [pendaftarId], references: [id])
 }
