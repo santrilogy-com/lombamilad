@@ -1,8 +1,10 @@
 /**
- * Notifikasi email via Resend. Aktif hanya bila RESEND_API_KEY dan RESEND_FROM
- * di-set di environment. Gagal diam-diam (non-blocking) agar tidak menghalangi
- * proses pendaftaran.
+ * Notifikasi email via SMTP (mis. Mailspace — hosting email dari DomaiNesia).
+ * Aktif hanya bila SMTP_HOST, SMTP_USER, dan SMTP_PASS di-set di environment.
+ * Gagal diam-diam (non-blocking) agar tidak menghalangi proses pendaftaran.
  */
+
+import nodemailer from 'nodemailer';
 
 type EmailPayload = {
   to: string;
@@ -10,20 +12,31 @@ type EmailPayload = {
   html: string;
 };
 
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const RESEND_FROM = process.env.RESEND_FROM || 'Lomba Milad 290 <onboarding@resend.dev>';
+const SMTP_HOST = process.env.SMTP_HOST;
+const SMTP_PORT = Number(process.env.SMTP_PORT || 465);
+const SMTP_USER = process.env.SMTP_USER;
+const SMTP_PASS = process.env.SMTP_PASS;
+const SMTP_FROM = process.env.SMTP_FROM || SMTP_USER || 'Lomba Milad 290 <noreply@miladsidogiri.id>';
+
+let transporter: ReturnType<typeof nodemailer.createTransport> | null = null;
+function getTransporter() {
+  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) return null;
+  if (!transporter) {
+    transporter = nodemailer.createTransport({
+      host: SMTP_HOST,
+      port: SMTP_PORT,
+      secure: SMTP_PORT === 465, // 465 = SSL langsung, 587 = STARTTLS
+      auth: { user: SMTP_USER, pass: SMTP_PASS },
+    });
+  }
+  return transporter;
+}
 
 export async function sendEmail(payload: EmailPayload): Promise<void> {
-  if (!RESEND_API_KEY) return;
+  const t = getTransporter();
+  if (!t) return;
   try {
-    await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ from: RESEND_FROM, to: payload.to, subject: payload.subject, html: payload.html }),
-    });
+    await t.sendMail({ from: SMTP_FROM, to: payload.to, subject: payload.subject, html: payload.html });
   } catch (err) {
     console.error('Email send error:', err);
   }
