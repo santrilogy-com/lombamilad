@@ -51,6 +51,10 @@ export default function DaftarPage() {
     e.preventDefault();
     setError('');
     if (busy) return;
+    if (!cabang) {
+      setError('Pilih cabang lomba terlebih dahulu.');
+      return;
+    }
     const fd = new FormData(e.currentTarget);
     setBusy(true);
     try {
@@ -165,6 +169,7 @@ export default function DaftarPage() {
       </div>
 
       <form onSubmit={onSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 0 }}>
+        <input type="hidden" name="cabang" value={cabang} />
         <div
           style={{
             position: 'relative',

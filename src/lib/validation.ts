@@ -18,7 +18,10 @@ export function hitungUsia(tanggalLahir: string | Date): number {
 }
 
 export const pendaftarSchema = z.object({
-  cabang: z.enum(['puisi', 'khitobah', 'syair', 'mqk', 'mtq']),
+  cabang: z.enum(['puisi', 'khitobah', 'syair', 'mqk', 'mtq'], {
+    required_error: 'Pilih cabang lomba terlebih dahulu.',
+    invalid_type_error: 'Pilih cabang lomba terlebih dahulu.',
+  }),
   nama: z.string().trim().min(3, 'Nama minimal 3 karakter').max(120),
   tempatLahir: z.string().trim().min(2).max(120),
   tanggalLahir: z.string().min(1, 'Tanggal lahir wajib diisi'),
