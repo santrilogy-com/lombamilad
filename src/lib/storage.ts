@@ -55,13 +55,13 @@ export async function saveFile(
     const token = process.env.BLOB_READ_WRITE_TOKEN;
     if (!token) throw new Error('BLOB_READ_WRITE_TOKEN belum diset.');
     const blob = await put(`${subdir}/${filename}`, bytes, {
-      access: 'public',
+      access: 'private',
       contentType: file.type,
       token,
       addRandomSuffix: false,
     });
-    // URL blob sudah berisi id acak yang sulit ditebak; klien tetap mengaksesnya
-    // lewat /api/berkas (bukan langsung), lihat proxy di sana.
+    // Blob privat: hanya bisa dibaca lewat SDK + token, tidak lewat URL publik
+    // langsung. Klien selalu mengaksesnya lewat proxy /api/berkas, lihat di sana.
     return { url: blob.url, name: file.name, size: file.size };
   }
 

@@ -4,6 +4,7 @@ import path from 'path';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { get as getBlob } from '@vercel/blob';
 
 const LOCAL_DIR = path.resolve(process.env.LOCAL_STORAGE_DIR || './storage/uploads');
 
@@ -73,7 +74,7 @@ export async function GET(req: Request) {
   });
 }
 
-/** Proxy berkas dari Vercel Blob agar URL asli tidak pernah terekspos ke klien. */
+/** Ambil berkas dari Vercel Blob (store privat) memakai token server, bukan URL publik. */
 async function serveRemote(rawUrl: string) {
   let parsed: URL;
   try {
@@ -82,18 +83,18 @@ async function serveRemote(rawUrl: string) {
     return new NextResponse('Bad request', { status: 400 });
   }
   // Batasi hanya ke domain Vercel Blob agar route ini tidak jadi proxy terbuka (SSRF).
-  if (!parsed.hostname.endsWith('.public.blob.vercel-storage.com')) {
+  if (!parsed.hostname.endsWith('.blob.vercel-storage.com')) {
     return new NextResponse('Bad request', { status: 400 });
   }
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  if (!token) return new NextResponse('Storage not configured', { status: 500 });
 
-  const upstream = await fetch(parsed.toString());
-  if (!upstream.ok) return new NextResponse('Not found', { status: 404 });
+  const result = await getBlob(parsed.toString(), { access: 'private', token });
+  if (!result || !result.stream) return new NextResponse('Not found', { status: 404 });
 
-  const data = await upstream.arrayBuffer();
-  const mime = upstream.headers.get('content-type') || 'application/octet-stream';
-  return new NextResponse(new Uint8Array(data), {
+  return new NextResponse(result.stream as unknown as ReadableStream, {
     headers: {
-      'Content-Type': mime,
+      'Content-Type': result.blob.contentType || 'application/octet-stream',
       'Content-Disposition': 'inline',
       'Cache-Control': 'private, no-store',
     },
