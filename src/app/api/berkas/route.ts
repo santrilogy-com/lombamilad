@@ -5,6 +5,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { get as getBlob } from '@vercel/blob';
+import { getR2Object } from '@/lib/storage';
 
 const LOCAL_DIR = path.resolve(process.env.LOCAL_STORAGE_DIR || './storage/uploads');
 
@@ -41,6 +42,10 @@ export async function GET(req: Request) {
 
   const rel = pendaftar.fileIdentitas || '';
 
+  if (rel.startsWith('r2://')) {
+    return serveR2(rel);
+  }
+
   if (/^https?:\/\//.test(rel)) {
     return serveRemote(rel);
   }
@@ -72,6 +77,24 @@ export async function GET(req: Request) {
       'Cache-Control': 'private, no-store',
     },
   });
+}
+
+/** Ambil berkas dari Cloudflare R2 (bucket privat) memakai kredensial server. */
+async function serveR2(rel: string) {
+  try {
+    const { body, contentType } = await getR2Object(rel);
+    if (!body) return new NextResponse('Not found', { status: 404 });
+    const bytes = await (body as { transformToByteArray: () => Promise<Uint8Array> }).transformToByteArray();
+    return new NextResponse(new Uint8Array(bytes), {
+      headers: {
+        'Content-Type': contentType,
+        'Content-Disposition': 'inline',
+        'Cache-Control': 'private, no-store',
+      },
+    });
+  } catch {
+    return new NextResponse('Not found', { status: 404 });
+  }
 }
 
 /** Ambil berkas dari Vercel Blob (store privat) memakai token server, bukan URL publik. */
