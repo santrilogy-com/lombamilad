@@ -60,3 +60,32 @@ export async function kirimKonfirmasiPendaftar(opts: {
     </div>`;
   await sendEmail({ to, subject: `Pendaftaran Diterima — ${nomorPendaftaran}`, html });
 }
+
+export async function kirimLupaStatus(opts: {
+  to: string;
+  nama: string;
+  daftar: { nomorPendaftaran: string; tokenCek: string; cabang: string }[];
+}) {
+  const { to, nama, daftar } = opts;
+  const rows = daftar
+    .map(
+      (d) => `
+        <div style="background:#fff;border-radius:6px;padding:16px 18px;margin:10px 0;">
+          <div style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#7c7b77;">${d.cabang}</div>
+          <div style="font-size:20px;font-weight:600;color:#675c37;margin-top:4px;">${d.nomorPendaftaran}</div>
+          <div style="font-size:14px;color:#24211c;margin-top:4px;">Token: <strong>${d.tokenCek}</strong></div>
+        </div>`
+    )
+    .join('');
+  const html = `
+    <div style="font-family:Sora,system-ui,sans-serif;background:#efede7;padding:32px;color:#24211c;">
+      <div style="max-width:520px;margin:0 auto;background:#e5e2da;border-radius:6px;padding:36px;">
+        <div style="font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#8a7c4c;font-weight:700;">Milad ke-290 Pondok Pesantren Sidogiri</div>
+        <h1 style="font-size:22px;font-weight:600;margin:12px 0 8px;">Nomor Pendaftaran &amp; Token Anda</h1>
+        <p>Assalamu'alaikum <strong>${nama}</strong>, berikut data pendaftaran yang tercatat atas nama Anda:</p>
+        ${rows}
+        <p style="font-size:13px;color:#7c7b77;margin-top:20px;">Bila Anda tidak meminta ini, abaikan email ini.</p>
+      </div>
+    </div>`;
+  await sendEmail({ to, subject: 'Pemulihan Nomor Pendaftaran & Token', html });
+}

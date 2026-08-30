@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 type StatusResult = {
@@ -33,19 +34,30 @@ const STATUS_STYLE: Record<string, { label: string; bg: string; color: string }>
 };
 
 export default function CekStatusPage() {
-  const [nomor, setNomor] = useState('');
-  const [token, setToken] = useState('');
+  return (
+    <Suspense fallback={null}>
+      <CekStatusForm />
+    </Suspense>
+  );
+}
+
+function CekStatusForm() {
+  const searchParams = useSearchParams();
+  const [nomor, setNomor] = useState(searchParams.get('nomor') || '');
+  const [token, setToken] = useState(searchParams.get('token') || '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<StatusResult | null>(null);
 
-  async function cari(e: React.FormEvent) {
-    e.preventDefault();
+  async function cari(nomorArg?: string, tokenArg?: string) {
+    const n = (nomorArg ?? nomor).trim();
+    const t = (tokenArg ?? token).trim();
+    if (!n || !t) return;
     setError('');
     setResult(null);
     setBusy(true);
     try {
-      const q = new URLSearchParams({ nomor: nomor.trim(), token: token.trim() });
+      const q = new URLSearchParams({ nomor: n, token: t });
       const res = await fetch(`/api/cek-status?${q}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'Tidak ditemukan');
@@ -56,6 +68,14 @@ export default function CekStatusPage() {
       setBusy(false);
     }
   }
+
+  // Auto-periksa bila nomor & token sudah dibawa lewat URL (mis. tautan dari email).
+  useEffect(() => {
+    const n = searchParams.get('nomor');
+    const t = searchParams.get('token');
+    if (n && t) cari(n, t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const labelStyle = {
     fontSize: 11,
@@ -91,7 +111,13 @@ export default function CekStatusPage() {
         halaman sukses pendaftaran).
       </p>
 
-      <form onSubmit={cari} style={{ display: 'grid', gap: 16, marginBottom: 36 }}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          cari();
+        }}
+        style={{ display: 'grid', gap: 16, marginBottom: 36 }}
+      >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <label htmlFor="nomor" style={labelStyle}>Nomor pendaftaran</label>
           <input id="nomor" value={nomor} onChange={(e) => setNomor(e.target.value)} placeholder="MS290-XXXX-????" style={inputStyle} required />
@@ -100,9 +126,14 @@ export default function CekStatusPage() {
           <label htmlFor="token" style={labelStyle}>Token</label>
           <input id="token" value={token} onChange={(e) => setToken(e.target.value)} placeholder="8 karakter (mis. 3KZ7MA2P)" style={inputStyle} required />
         </div>
-        <button type="submit" disabled={busy} className="submit-hover" style={{ height: 50, padding: '0 28px', background: 'var(--ink)', color: 'var(--paper)', border: 0, borderRadius: 2, fontSize: 14, fontWeight: 600, cursor: busy ? 'wait' : 'pointer', justifySelf: 'start' }}>
-          {busy ? 'Memeriksa...' : 'Periksa Status'}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
+          <button type="submit" disabled={busy} className="submit-hover" style={{ height: 50, padding: '0 28px', background: 'var(--ink)', color: 'var(--paper)', border: 0, borderRadius: 2, fontSize: 14, fontWeight: 600, cursor: busy ? 'wait' : 'pointer' }}>
+            {busy ? 'Memeriksa...' : 'Periksa Status'}
+          </button>
+          <Link href="/lupa-status" style={{ fontSize: 13, fontWeight: 600 }}>
+            Lupa nomor pendaftaran / token?
+          </Link>
+        </div>
       </form>
 
       {error ? (
