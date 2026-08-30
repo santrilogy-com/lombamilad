@@ -222,7 +222,7 @@ export default function DaftarPage() {
               <label style={labelStyle}>Usia</label>
               <input readOnly placeholder="Terisi otomatis" value={usiaText} style={inputStyle(true)} />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, gridColumn: 'span 2' }}>
+            <div className="g-formulir-span2" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <label htmlFor="asalLembaga" style={labelStyle}>Asal pesantren / lembaga pendidikan</label>
               <input id="asalLembaga" name="asalLembaga" type="text" placeholder="Nama lembaga (mandiri: isi '-')" style={inputStyle()} />
             </div>
@@ -238,7 +238,7 @@ export default function DaftarPage() {
               <label htmlFor="nomorIdentitas" style={labelStyle}>Nomor identitas (KTP/KTM/KTS)</label>
               <input id="nomorIdentitas" name="nomorIdentitas" type="text" required placeholder="Nomor identitas" style={inputStyle()} />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, gridColumn: 'span 2' }}>
+            <div className="g-formulir-span2" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <label htmlFor="fileIdentitas" style={labelStyle}>Kartu tanda pengenal (scan/foto KTP/KTM/KTS)</label>
               <input id="fileIdentitas" name="fileIdentitas" type="file" accept="image/*,.pdf" required style={{ padding: '12px 14px', background: 'var(--paper)', border: '1px dashed rgba(36,33,28,0.28)', borderRadius: 2, fontSize: 13 }} />
               <div style={{ fontSize: 12, color: 'var(--grey)' }}>JPG, PNG, atau PDF. Maksimal {MAX_FILE_MB}MB.</div>

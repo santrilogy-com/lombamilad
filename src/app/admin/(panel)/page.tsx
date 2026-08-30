@@ -17,14 +17,9 @@ const STATUS_BADGE: Record<string, { label: string; bg: string; color: string }>
 };
 
 export default async function AdminDashboardPage() {
-  const [total, perCabang, recent, menunggu] = await Promise.all([
+  const [total, grouped, recent, menunggu] = await Promise.all([
     prisma.pendaftar.count(),
-    Promise.all(
-      LOMBA.map(async (c) => ({
-        cabang: c,
-        jumlah: await prisma.pendaftar.count({ where: { cabangId: c.id } }),
-      }))
-    ),
+    prisma.pendaftar.groupBy({ by: ['cabangId'], _count: { _all: true } }),
     prisma.pendaftar.findMany({
       take: 8,
       orderBy: { createdAt: 'desc' },
@@ -40,6 +35,9 @@ export default async function AdminDashboardPage() {
     }),
     prisma.pendaftar.count({ where: { status: 'MENUNGGU_VERIFIKASI' } }),
   ]);
+
+  const countByCabang = new Map(grouped.map((g) => [g.cabangId, g._count._all]));
+  const perCabang = LOMBA.map((c) => ({ cabang: c, jumlah: countByCabang.get(c.id) || 0 }));
 
   const badge = (s: string) => STATUS_BADGE[s] || { label: s, bg: '#ecece6', color: '#7a7a72' };
 

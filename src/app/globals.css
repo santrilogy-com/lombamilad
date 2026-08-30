@@ -219,8 +219,10 @@ a.nav-link:hover::after { right: 0; }
   .g-kontak { grid-template-columns: 1fr; gap: 32px !important; }
   .g-steps4 { grid-template-columns: repeat(2, 1fr); }
 }
+.g-formulir-span2 { grid-column: span 2; }
 @media (max-width: 560px) {
   .g-lomba-inner { grid-template-columns: 1fr; }
   .g-facilities { grid-template-columns: 1fr; }
   .g-formulir { grid-template-columns: 1fr; }
+  .g-formulir-span2 { grid-column: auto; }
 }

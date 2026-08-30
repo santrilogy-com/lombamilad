@@ -28,9 +28,23 @@ export default function CompassCursor() {
       },
       { threshold: 0.08 }
     );
-    document.querySelectorAll('.reveal').forEach((el) => rx.observe(el));
 
-    return () => rx.disconnect();
+    const observeNew = () => {
+      document.querySelectorAll('.reveal:not(.in-view)').forEach((el) => rx.observe(el));
+    };
+    observeNew();
+
+    // CompassCursor lives in the root layout and only mounts once, but the
+    // App Router swaps page content underneath it on every client-side
+    // navigation. Without watching for that, .reveal sections added by a
+    // later page never get observed and stay stuck at opacity:0.
+    const mo = new MutationObserver(observeNew);
+    mo.observe(document.body, { childList: true, subtree: true });
+
+    return () => {
+      rx.disconnect();
+      mo.disconnect();
+    };
   }, []);
 
   useEffect(() => {
