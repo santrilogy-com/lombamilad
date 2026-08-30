@@ -1,8 +1,59 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { LOMBA } from '@/lib/data';
 import { buatTautanWa } from '@/lib/whatsapp';
+
+// Baris "[Teks Tombol](https://...)" pada pesan dirender jadi tombol di email;
+// di WhatsApp (yang tidak mendukung format ini) diubah jadi "Teks Tombol: https://...".
+const POLA_TOMBOL = /^\s*\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)\s*$/;
+function untukWa(pesan: string): string {
+  return pesan
+    .split('\n')
+    .map((line) => {
+      const cocok = line.match(POLA_TOMBOL);
+      return cocok ? `${cocok[1]}: ${cocok[2]}` : line;
+    })
+    .join('\n');
+}
+
+const TEMPLATE_JENIS: { label: string; judul: string; pesan: string }[] = [
+  {
+    label: 'Kosongkan (mulai dari nol)',
+    judul: '',
+    pesan: "Assalamu'alaikum {nama},\n\n",
+  },
+  {
+    label: 'Jadwal & Link Zoom — Technical Meeting',
+    judul: 'Info Technical Meeting — Link Zoom',
+    pesan:
+      "Assalamu'alaikum {nama},\n\nMengingatkan jadwal Technical Meeting Lomba Nasional Milad Sidogiri ke-290:\n\nKamis, 18 Jumadal Ula 1448 H. | 29 Oktober 2026 M.\n\nMohon hadir tepat waktu. Bila berhalangan, konfirmasi kepada panitia terlebih dahulu.\n\n[Gabung Zoom Technical Meeting](https://zoom.us/j/GANTI_LINK_ZOOM)",
+  },
+  {
+    label: 'Jadwal & Link Zoom — Penyisihan',
+    judul: 'Jadwal & Link Zoom Penyisihan',
+    pesan:
+      "Assalamu'alaikum {nama},\n\nPenyisihan Lomba Nasional Milad Sidogiri ke-290 dilaksanakan:\n\nJum'at, 19 Jumadal Ula 1448 H. | 30 Oktober 2026 M.\n\nMohon bergabung 15 menit sebelum jadwal dan pastikan kamera serta mikrofon aktif selama penyisihan berlangsung.\n\n[Gabung Zoom Penyisihan](https://zoom.us/j/GANTI_LINK_ZOOM)",
+  },
+  {
+    label: 'Pengumuman Hasil Penyisihan (umum)',
+    judul: 'Pengumuman Hasil Penyisihan',
+    pesan:
+      "Assalamu'alaikum {nama},\n\nHasil penyisihan Lomba Nasional Milad Sidogiri ke-290 sudah dapat dicek melalui Dashboard Peserta.\n\nSelamat kepada peserta yang lolos ke babak final. Bagi yang belum berkesempatan lolos, terima kasih atas partisipasi dan semangatnya.",
+  },
+  {
+    label: 'Pengingat Batas Pengumpulan Berkas',
+    judul: 'Pengingat: Batas Pengumpulan Berkas',
+    pesan:
+      "Assalamu'alaikum {nama},\n\nMengingatkan batas akhir pengumpulan naskah/berkas persyaratan lomba adalah Rabu, 17 Jumadal Ula 1448 H. | 28 Oktober 2026 M.\n\nMohon segera lengkapi berkas Anda sebelum batas waktu tersebut agar pendaftaran dapat diproses.",
+  },
+  {
+    label: 'Jadwal Babak Final (luring)',
+    judul: 'Jadwal Babak Final',
+    pesan:
+      "Assalamu'alaikum {nama},\n\nSelamat, Anda lolos ke babak final. Babak final dilaksanakan secara luring:\n\nMalam Jum'at, 10 Jumadal Tsaniyah 1448 H. | 20 November 2026 M., di Pondok Pesantren Sidogiri.\n\nMohon konfirmasi kehadiran kepada panitia dan bawa identitas resmi (KTP/KTM/KTS) untuk registrasi ulang.",
+  },
+];
 
 type Peserta = {
   id: string;
@@ -56,12 +107,38 @@ export default function BroadcastWa({ peserta, pengumuman }: { peserta: Peserta[
   const [pesanError, setPesanError] = useState<Record<string, string>>({});
   const [kirimBusy, setKirimBusy] = useState(false);
   const [progres, setProgres] = useState({ selesai: 0, total: 0 });
+  const pesanRef = useRef<HTMLTextAreaElement>(null);
 
   function pilihPengumuman(id: string) {
     const p = pengumuman.find((x) => x.id === id);
     if (!p) return;
     setJudul(p.judul);
     setPesan(`Assalamu'alaikum {nama},\n\n${p.isi}`);
+  }
+
+  function pilihTemplate(label: string) {
+    const t = TEMPLATE_JENIS.find((x) => x.label === label);
+    if (!t) return;
+    setJudul(t.judul);
+    setPesan(t.pesan);
+  }
+
+  function sisipkanTombol() {
+    const ta = pesanRef.current;
+    const snip = '\n[Teks Tombol](https://)\n';
+    if (!ta) {
+      setPesan((s) => s + snip);
+      return;
+    }
+    const start = ta.selectionStart ?? pesan.length;
+    const end = ta.selectionEnd ?? pesan.length;
+    const next = pesan.slice(0, start) + snip + pesan.slice(end);
+    setPesan(next);
+    requestAnimationFrame(() => {
+      ta.focus();
+      const posisi = start + snip.length;
+      ta.setSelectionRange(posisi, posisi);
+    });
   }
 
   function toggleStatus(s: string) {
@@ -133,20 +210,37 @@ export default function BroadcastWa({ peserta, pengumuman }: { peserta: Peserta[
 
       <div style={{ background: 'var(--paper2)', borderRadius: 4, padding: '22px 24px', marginBottom: 18 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12, marginBottom: 14 }}>
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--grey)', display: 'block', marginBottom: 6 }}>
-              Isi dari pengumuman yang sudah ada (opsional)
-            </label>
-            <select onChange={(e) => pilihPengumuman(e.target.value)} defaultValue="" style={{ ...inputStyle, width: '100%' }}>
-              <option value="" disabled>
-                — pilih untuk mengisi otomatis —
-              </option>
-              {pengumuman.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.judul}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px,1fr))', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--grey)', display: 'block', marginBottom: 6 }}>
+                Mulai dari template jenis pengumuman
+              </label>
+              <select onChange={(e) => pilihTemplate(e.target.value)} defaultValue="" style={{ ...inputStyle, width: '100%' }}>
+                <option value="" disabled>
+                  — pilih jenis pengumuman —
                 </option>
-              ))}
-            </select>
+                {TEMPLATE_JENIS.map((t) => (
+                  <option key={t.label} value={t.label}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--grey)', display: 'block', marginBottom: 6 }}>
+                Atau isi dari pengumuman yang sudah ada
+              </label>
+              <select onChange={(e) => pilihPengumuman(e.target.value)} defaultValue="" style={{ ...inputStyle, width: '100%' }}>
+                <option value="" disabled>
+                  — pilih untuk mengisi otomatis —
+                </option>
+                {pengumuman.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.judul}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <div>
             <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--grey)', display: 'block', marginBottom: 6 }}>
@@ -155,16 +249,31 @@ export default function BroadcastWa({ peserta, pengumuman }: { peserta: Peserta[
             <input value={judul} onChange={(e) => setJudul(e.target.value)} placeholder="Mis. Jadwal & Link Zoom Penyisihan" style={{ ...inputStyle, width: '100%' }} />
           </div>
           <div>
-            <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--grey)', display: 'block', marginBottom: 6 }}>
-              Pesan
-            </label>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--grey)' }}>
+                Pesan
+              </label>
+              <button
+                type="button"
+                onClick={sisipkanTombol}
+                style={{ height: 26, padding: '0 10px', fontSize: 11.5, fontWeight: 600, background: 'var(--paper)', border: '1px solid rgba(36,33,28,0.25)', borderRadius: 2, cursor: 'pointer' }}
+              >
+                + Sisipkan Tombol
+              </button>
+            </div>
             <textarea
+              ref={pesanRef}
               value={pesan}
               onChange={(e) => setPesan(e.target.value)}
-              rows={6}
+              rows={7}
               placeholder={"Assalamu'alaikum {nama},\n\nIsi pengumuman..."}
-              style={{ width: '100%', padding: 12, fontSize: 13.5, background: 'var(--paper)', border: '1px solid rgba(36,33,28,0.2)', borderRadius: 2, resize: 'vertical' }}
+              style={{ width: '100%', padding: 12, fontSize: 13.5, background: 'var(--paper)', border: '1px solid rgba(36,33,28,0.2)', borderRadius: 2, resize: 'vertical', fontFamily: 'inherit' }}
             />
+            <p style={{ fontSize: 11.5, color: 'var(--grey)', margin: '6px 0 0' }}>
+              Tombol &ldquo;+ Sisipkan Tombol&rdquo; menambah baris <code>[Teks Tombol](https://)</code> — ganti teks di dalam
+              kurung siku dengan label tombolnya dan isi link setelah kurung buka. Baris ini otomatis jadi tombol
+              berwarna di email (mis. untuk link Zoom); di WhatsApp tetap tampil sebagai teks + tautan biasa.
+            </p>
           </div>
         </div>
 
@@ -235,7 +344,7 @@ export default function BroadcastWa({ peserta, pengumuman }: { peserta: Peserta[
             </thead>
             <tbody>
               {filtered.map((p) => {
-                const pesanPersonal = pesan.replace(/\{nama\}/g, p.nama);
+                const pesanPersonal = untukWa(pesan.replace(/\{nama\}/g, p.nama));
                 const st = statusEmail[p.id];
                 return (
                   <tr key={p.id}>

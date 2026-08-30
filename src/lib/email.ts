@@ -121,7 +121,33 @@ export async function kirimLupaStatus(opts: {
   await sendEmail({ to, subject: 'Pemulihan Nomor Pendaftaran & Token', html });
 }
 
-/** Broadcast pengumuman (jadwal, link Zoom, info umum, dll) ke satu peserta. Melempar error bila gagal. */
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Baris berformat "[Teks Tombol](https://...)" dirender sebagai tombol, bukan paragraf biasa —
+// supaya admin bisa menyisipkan mis. link Zoom tanpa perlu menulis HTML.
+const POLA_TOMBOL = /^\s*\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)\s*$/;
+
+function renderIsiPengumuman(isi: string): string {
+  return isi
+    .split('\n')
+    .map((line) => {
+      if (!line.trim()) return '';
+      const cocok = line.match(POLA_TOMBOL);
+      if (cocok) {
+        const [, label, url] = cocok;
+        return `<a href="${escapeHtml(url)}" style="display:inline-block;background:#8a7c4c;color:#fff;text-decoration:none;padding:11px 20px;border-radius:4px;font-size:13.5px;font-weight:600;margin:4px 0 10px;">${escapeHtml(label)}</a>`;
+      }
+      return `<p style="margin:0 0 10px;font-size:14px;line-height:1.65;">${escapeHtml(line)}</p>`;
+    })
+    .join('');
+}
+
+/**
+ * Broadcast pengumuman (jadwal, link Zoom, info umum, dll) ke satu peserta. Melempar error bila gagal.
+ * Baris berformat "[Teks Tombol](https://...)" di `isi` otomatis dirender sebagai tombol.
+ */
 export async function kirimPengumumanEmail(opts: {
   to: string;
   nama: string;
@@ -130,14 +156,11 @@ export async function kirimPengumumanEmail(opts: {
   baseUrl: string;
 }): Promise<{ messageId: string }> {
   const { to, nama, judul, isi, baseUrl } = opts;
-  const isiHtml = isi
-    .split('\n')
-    .map((line) => (line.trim() ? `<p style="margin:0 0 10px;font-size:14px;line-height:1.65;">${line}</p>` : ''))
-    .join('');
+  const isiHtml = renderIsiPengumuman(isi);
   const html = bungkusEmail(
-    judul,
+    escapeHtml(judul),
     `
-      <p style="font-size:14px;line-height:1.6;margin:0 0 16px;">Assalamu'alaikum <strong>${nama}</strong>,</p>
+      <p style="font-size:14px;line-height:1.6;margin:0 0 16px;">Assalamu'alaikum <strong>${escapeHtml(nama)}</strong>,</p>
       <div style="background:#fff;border-radius:6px;padding:18px 20px;margin:0 0 18px;">${isiHtml}</div>
       <a href="${baseUrl}/cek-status" style="display:inline-block;background:#24211c;color:#efede7;text-decoration:none;padding:12px 20px;border-radius:4px;font-size:14px;font-weight:600;">Buka Dashboard Peserta</a>
       <p style="font-size:12px;color:#7c7b77;margin-top:24px;">Email ini dikirim panitia Lomba Nasional Milad Sidogiri ke-290.</p>
