@@ -53,6 +53,15 @@ export async function POST(req: Request) {
     });
 
     if (!parsed.success) {
+      console.error(
+        'Validasi pendaftar gagal',
+        JSON.stringify({
+          cabangRaw: form.get('cabang'),
+          cabangType: typeof form.get('cabang'),
+          keys: Array.from(form.keys()),
+          issues: parsed.error.errors,
+        })
+      );
       return NextResponse.json(
         { error: parsed.error.errors[0]?.message || 'Data tidak valid' },
         { status: 400 }
