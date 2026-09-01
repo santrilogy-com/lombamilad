@@ -31,6 +31,7 @@ export default function AdminLoginPage() {
     <main
       style={{
         position: 'relative',
+        zIndex: 0,
         overflow: 'hidden',
         minHeight: '100vh',
         display: 'flex',

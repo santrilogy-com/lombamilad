@@ -91,6 +91,10 @@ select:focus-visible {
 @keyframes floaty { 0%, 100% { transform: translateY(0) rotate(-0.2deg); } 50% { transform: translateY(-9px) rotate(0.2deg); } }
 @keyframes bloom { 0%, 100% { opacity: 0.5; transform: scale(1); } 50% { opacity: 0.85; transform: scale(1.05); } }
 @keyframes ornamentGlow { 0%, 100% { opacity: 0.34; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.035); } }
+/* Higher-ceiling variant for PageOrnaments: the source art is a very sparse, low-alpha
+   lattice texture, so it needs a stronger opacity floor/ceiling than ornamentGlow to
+   read reliably as a corner motif instead of disappearing into the paper background. */
+@keyframes pageOrnamentGlow { 0%, 100% { opacity: 0.55; transform: scale(1); } 50% { opacity: 0.9; transform: scale(1.035); } }
 @keyframes cmpPop { 0% { opacity: 0; transform: scale(0.55); filter: blur(6px); } 60% { opacity: 1; } 100% { opacity: 1; transform: scale(1); filter: blur(0); } }
 @keyframes ndlSweep { 0% { opacity: 0; transform: rotate(-215deg) scale(0.7); } 25% { opacity: 1; } 100% { opacity: 1; transform: rotate(0deg) scale(1); } }
 @keyframes numWipe { 0% { opacity: 0; clip-path: inset(0 100% 0 0); transform: translateY(14px); } 40% { opacity: 1; } 100% { opacity: 1; clip-path: inset(0 -2% 0 0); transform: translateY(0); } }
