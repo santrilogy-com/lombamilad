@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import PageOrnaments from '@/components/PageOrnaments';
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('');
@@ -29,6 +30,8 @@ export default function AdminLoginPage() {
   return (
     <main
       style={{
+        position: 'relative',
+        overflow: 'hidden',
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
@@ -37,6 +40,7 @@ export default function AdminLoginPage() {
         background: 'var(--paper)',
       }}
     >
+      <PageOrnaments />
       <form
         onSubmit={onSubmit}
         style={{

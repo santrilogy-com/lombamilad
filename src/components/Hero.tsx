@@ -205,9 +205,9 @@ export default function Hero() {
               animation: 'riseIn 1000ms cubic-bezier(0.16,1,0.3,1) 720ms both',
             }}
           >
-            Lima cabang lomba tingkat nasional dalam rangkaian Milad ke-290 Pondok Pesantren
-            Sidogiri dan Ikhtibar ke-91 Madrasah Miftahul Ulum. Terbuka untuk delegasi pesantren,
-            lembaga pendidikan, dan pendaftar mandiri.
+            Lomba Nasional dalam rangka Milad ke-290 Pondok Pesantren Sidogiri dan Ikhtibar
+            ke-91 Madrasah Miftahul Ulum. Terbuka untuk delegasi pesantren, lembaga pendidikan,
+            dan pendaftar mandiri.
           </p>
           <div
             style={{

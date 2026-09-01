@@ -29,28 +29,19 @@ export default function LombaSection() {
         }}
       >
         <div>
-          <div
-            style={{
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: '0.22em',
-              textTransform: 'uppercase',
-              color: 'var(--olive)',
-            }}
-          >
-            01 / Cabang Lomba
-          </div>
           <h2
             style={{
               fontFamily: 'var(--disp)',
-              fontWeight: 300,
+              fontWeight: 700,
               fontSize: 'clamp(30px, 3.6vw, 52px)',
               lineHeight: 1.02,
-              letterSpacing: '-0.04em',
-              margin: '18px 0 0',
+              letterSpacing: '0.01em',
+              textTransform: 'uppercase',
+              color: 'var(--olive)',
+              margin: 0,
             }}
           >
-            Lima cabang, satu arah
+            Cabang Lomba
           </h2>
         </div>
         <p

@@ -9,6 +9,25 @@ import { kirimKonfirmasiPendaftar } from '@/lib/email';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
+const NOMOR_URUT_KEY = 'pendaftar_nomor_urut';
+
+/**
+ * Ambil nomor urut berikutnya secara atomik lewat UPDATE...RETURNING di baris
+ * Pengaturan yang sama. Sebelumnya nomor urut diambil dari `pendaftar.count()`,
+ * yang race: dua pendaftaran nyaris bersamaan bisa membaca count yang sama dan
+ * menghasilkan nomorPendaftaran kembar, lalu gagal dengan error unique
+ * constraint saat insert kedua (terlihat di log produksi berulang kali).
+ */
+async function nomorUrutBerikutnya(): Promise<number> {
+  const rows = await prisma.$queryRaw<{ value: string }[]>`
+    INSERT INTO "Pengaturan" (key, value, "updatedAt")
+    VALUES (${NOMOR_URUT_KEY}, '1', now())
+    ON CONFLICT (key) DO UPDATE SET value = (("Pengaturan".value)::int + 1)::text, "updatedAt" = now()
+    RETURNING value;
+  `;
+  return parseInt(rows[0].value, 10) - 1;
+}
+
 async function fireAndForgetEmail(nama: string, cabangId: string, p: { nomorPendaftaran: string; tokenCek: string }, base: URL, email?: string | null) {
   if (!email) return;
   try {
@@ -111,7 +130,6 @@ export async function POST(req: Request) {
     // --- Cek kuota atomik & buat pendaftar ---
     try {
       const count = await prisma.pendaftar.count({ where: { cabangId: d.cabang } });
-      const dailyCount = await prisma.pendaftar.count();
       if (count >= cabang.kuota) {
         return NextResponse.json(
           { error: `Kuota untuk cabang ini sudah penuh (${cabang.kuota} peserta).` },
@@ -119,6 +137,7 @@ export async function POST(req: Request) {
         );
       }
 
+      const urutan = await nomorUrutBerikutnya();
       const pendaftar = await prisma.pendaftar.create({
         data: {
           cabangId: d.cabang,
@@ -132,7 +151,7 @@ export async function POST(req: Request) {
           nomorIdentitas: d.nomorIdentitas,
           fileIdentitas: urlIdentitas,
           fileSubmisi: urlSubmisi,
-          nomorPendaftaran: buatNomorPendaftaran(dailyCount, d.cabang),
+          nomorPendaftaran: buatNomorPendaftaran(urutan, d.cabang),
           tokenCek: buatToken(),
         },
       });
