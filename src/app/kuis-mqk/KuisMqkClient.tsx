@@ -73,6 +73,7 @@ export default function KuisMqkClient() {
   const fotoAwalKirimRef = useRef(false);
   const fotoAkhirKirimRef = useRef(false);
   const lapoKameraRef = useRef(0);
+  const lapoResizeRef = useRef(0);
 
   function tampilkanToast(pesan: string) {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -425,6 +426,30 @@ export default function KuisMqkClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
+  // Lapor bila jendela browser menyempit signifikan dari ukurannya (panel
+  // samping / DevTools terbuka di desktop) — indikasi ekstensi AI aktif.
+  useEffect(() => {
+    if (step !== 'sedang') return;
+    function onResize() {
+      const widthGap = window.outerWidth - window.innerWidth;
+      const heightGap = window.outerHeight - window.innerHeight;
+      if (widthGap <= 160 && heightGap <= 160) return;
+      const now = Date.now();
+      if (now - lapoResizeRef.current < 3000) return;
+      lapoResizeRef.current = now;
+      tampilkanToast('Aktivitas mencurigakan terdeteksi — tercatat');
+      const { nomor: n, token: t } = credRef.current;
+      fetch('/api/kuis/mencurigakan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nomor: n, token: t }),
+      }).catch(() => {});
+    }
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
   // Peringatkan sebelum menutup/memuat ulang halaman saat kuis berlangsung,
   // supaya peserta tidak kehilangan waktu soal karena refresh tidak sengaja.
   useEffect(() => {
@@ -476,15 +501,13 @@ export default function KuisMqkClient() {
             50 soal nahwu, fikih, dan sharaf dari Kitab Fathul-Mu&rsquo;in Bab Ubudiyah. Waktu 15 detik
             per soal, tidak bisa kembali ke soal sebelumnya, dan kuis hanya dapat dikerjakan satu kali.
             Pastikan koneksi internet stabil sebelum memulai — jangan tutup atau muat ulang halaman
-            selama kuis berlangsung. Sistem mencatat bila Anda berpindah tab/aplikasi lain saat
-            mengerjakan; hindari melakukannya agar tidak dianggap mencurigakan oleh panitia.
+            selama kuis berlangsung. Sistem memantau berbagai aktivitas selama kuis berlangsung;
+            tindakan yang dianggap mencurigakan akan tercatat dan dapat memengaruhi kelulusan Anda.
           </p>
           <p style={{ fontSize: 14, lineHeight: 1.6, color: '#4b4740', margin: '0 0 32px', background: 'var(--paper2)', borderRadius: 3, padding: '14px 16px' }}>
-            Kuis ini memerlukan akses kamera untuk verifikasi wajah. Sistem mengambil <strong>satu foto
-            saat kuis dimulai</strong> dan <strong>satu foto menjelang kuis selesai</strong> untuk
-            memastikan peserta yang mengerjakan adalah Anda sendiri (bukan joki). Di antara keduanya,
-            kamera tetap menyala sebagai pengawasan namun tidak merekam video maupun mengambil foto
-            tambahan. Sistem juga mencatat bila kamera terputus saat kuis berlangsung.
+            Kuis ini memerlukan akses kamera untuk verifikasi wajah selama kuis berlangsung, guna
+            memastikan peserta yang mengerjakan adalah Anda sendiri (bukan joki). Pastikan kamera
+            tetap aktif dan wajah Anda terlihat jelas sepanjang kuis.
           </p>
           <form onSubmit={(e) => { e.preventDefault(); mulai(); }} style={{ display: 'grid', gap: 16 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

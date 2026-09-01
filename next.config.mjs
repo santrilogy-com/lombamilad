@@ -39,6 +39,11 @@ const nextConfig = {
           { key: 'Content-Security-Policy', value: CSP },
         ],
       },
+      {
+        // Dijaga tidak terindeks tanpa perlu mengumumkan path-nya di robots.txt (lihat robots.ts).
+        source: '/admin/:path*',
+        headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
+      },
     ];
   },
 };
