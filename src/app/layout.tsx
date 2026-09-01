@@ -46,7 +46,7 @@ export default function RootLayout({
         <CompassCursor />
         <HelpFab />
         <TopStripe />
-        <div style={{ flex: 1 }}>{children}</div>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>{children}</div>
         <div
           aria-hidden="true"
           style={{
