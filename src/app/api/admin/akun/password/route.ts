@@ -1,15 +1,14 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
 import bcrypt from 'bcryptjs';
-import { authOptions } from '@/lib/auth';
+import { requireAdminSession } from '@/lib/require-admin';
 import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function PATCH(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) return new NextResponse('Unauthorized', { status: 401 });
+  const session = await requireAdminSession();
+  if (!session) return new NextResponse('Unauthorized', { status: 401 });
 
   const body = await req.json().catch(() => ({}));
   const passwordLama = String(body.passwordLama || '');

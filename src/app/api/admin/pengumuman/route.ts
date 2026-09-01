@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { requireAdminSession } from '@/lib/require-admin';
 import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return new NextResponse('Unauthorized', { status: 401 });
+  const session = await requireAdminSession();
+  if (!session) return new NextResponse('Unauthorized', { status: 401 });
 
   const body = await req.json().catch(() => ({}));
   const judul = (body.judul || '').trim();
@@ -25,8 +24,8 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return new NextResponse('Unauthorized', { status: 401 });
+  const session = await requireAdminSession();
+  if (!session) return new NextResponse('Unauthorized', { status: 401 });
 
   const body = await req.json().catch(() => ({}));
   const { id, published, judul, isi, tipe } = body;
@@ -43,8 +42,8 @@ export async function PATCH(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return new NextResponse('Unauthorized', { status: 401 });
+  const session = await requireAdminSession();
+  if (!session) return new NextResponse('Unauthorized', { status: 401 });
 
   const url = new URL(req.url);
   const id = url.searchParams.get('id');

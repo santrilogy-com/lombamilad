@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { requireAdminSession } from '@/lib/require-admin';
 import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
@@ -10,8 +9,8 @@ const VALID_JAWABAN = ['A', 'B', 'C', 'D'];
 
 // Format per baris: Soal|PilihanA|PilihanB|PilihanC|PilihanD|Jawaban|Kategori(opsional)
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return new NextResponse('Unauthorized', { status: 401 });
+  const session = await requireAdminSession();
+  if (!session) return new NextResponse('Unauthorized', { status: 401 });
 
   const body = await req.json().catch(() => ({}));
   const teks = String(body.teks || '');

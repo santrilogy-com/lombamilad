@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('');
@@ -47,8 +48,7 @@ export default function AdminLoginPage() {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 26 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="Milad 290" style={{ height: 28, width: 'auto' }} />
+          <Image src="/logo.png" alt="Milad 290" width={49} height={28} style={{ height: 28, width: 'auto' }} priority />
           <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--olive)', textTransform: 'uppercase' }}>
             Panel Admin Milad 290
           </span>

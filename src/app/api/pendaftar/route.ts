@@ -92,7 +92,7 @@ export async function POST(req: Request) {
     // --- Simpan berkas ---
     let urlIdentitas: string;
     try {
-      const saved = await saveFile(fileIdentitas, 'image', 'identitas');
+      const saved = await saveFile(fileIdentitas, 'identitas', 'identitas');
       urlIdentitas = saved.url;
     } catch (e: any) {
       return NextResponse.json({ error: e.message }, { status: 400 });
@@ -101,7 +101,7 @@ export async function POST(req: Request) {
     let urlSubmisi: string | null = null;
     if (fileSubmisi instanceof File && fileSubmisi.size > 0) {
       try {
-        const saved = await saveFile(fileSubmisi, 'document', 'submisi');
+        const saved = await saveFile(fileSubmisi, 'submisi', 'submisi');
         urlSubmisi = saved.url;
       } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 400 });

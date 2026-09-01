@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { CONTACT_WA } from '@/lib/data';
 
 type KuisInfo = {
   attemptStatus: string | null;
@@ -87,7 +88,13 @@ function CekStatusForm() {
     try {
       const q = new URLSearchParams({ nomor: n, token: t });
       const res = await fetch(`/api/cek-status?${q}`);
-      const data = await res.json();
+      const raw = await res.text();
+      let data: any = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        throw new Error(`Terjadi kesalahan pada server. Silakan coba lagi, atau hubungi panitia via WhatsApp di ${CONTACT_WA[0]} bila masalah berlanjut.`);
+      }
       if (!res.ok) throw new Error(data?.error || 'Tidak ditemukan');
       setResult(data);
       setNomor(n);

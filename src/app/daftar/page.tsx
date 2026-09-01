@@ -2,12 +2,13 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { LOMBA, STEPS } from '@/lib/data';
+import { LOMBA, STEPS, CONTACT_WA } from '@/lib/data';
 
 export default function DaftarPage() {
   const [tglLahir, setTglLahir] = useState('');
   const [usia, setUsia] = useState<number | null>(null);
   const [usiaLebih, setUsiaLebih] = useState('');
+  const [usiaAck, setUsiaAck] = useState(false);
   const [cabang, setCabang] = useState('');
   const [sent, setSent] = useState(false);
   const [nomor, setNomor] = useState('');
@@ -31,6 +32,7 @@ export default function DaftarPage() {
     const m = now.getMonth() - born.getMonth();
     if (m < 0 || (m === 0 && now.getDate() < born.getDate())) age--;
     setUsia(age);
+    setUsiaAck(false);
     if (selected && age > maxUsiaFor(selected.id)) {
       setUsiaLebih(`Usia maksimal cabang ini ${maxUsiaFor(selected.id)} tahun.`);
     } else {
@@ -44,7 +46,12 @@ export default function DaftarPage() {
 
   function onCabang(id: string) {
     setCabang(id);
-    setUsiaLebih('');
+    setUsiaAck(false);
+    if (usia !== null && usia > maxUsiaFor(id)) {
+      setUsiaLebih(`Usia maksimal cabang ini ${maxUsiaFor(id)} tahun.`);
+    } else {
+      setUsiaLebih('');
+    }
   }
 
   const MAX_FILE_MB = 4;
@@ -55,6 +62,10 @@ export default function DaftarPage() {
     if (busy) return;
     if (!cabang) {
       setError('Pilih cabang lomba terlebih dahulu.');
+      return;
+    }
+    if (usiaLebih && !usiaAck) {
+      setError('Centang kotak konfirmasi usia di atas sebelum mengirim, atau pilih cabang lain yang sesuai.');
       return;
     }
     const fd = new FormData(e.currentTarget);
@@ -80,7 +91,7 @@ export default function DaftarPage() {
         throw new Error(
           res.status === 413
             ? `Berkas terlalu besar untuk dikirim. Maksimal ${MAX_FILE_MB}MB per berkas.`
-            : 'Terjadi kesalahan pada server. Silakan coba lagi.'
+            : `Terjadi kesalahan pada server. Silakan coba lagi, atau hubungi panitia via WhatsApp di ${CONTACT_WA[0]} bila masalah berlanjut.`
         );
       }
       if (!res.ok) throw new Error(data?.error || 'Terjadi kesalahan');
@@ -296,7 +307,16 @@ export default function DaftarPage() {
 
         {usiaLebih ? (
           <div style={{ marginTop: 24, background: 'var(--olive-p)', borderLeft: '3px solid var(--olive)', borderRadius: 2, padding: '14px 16px', fontSize: 13, lineHeight: 1.55, color: '#453d24' }}>
-            {usiaLebih} Pastikan cabang yang Anda pilih sesuai.
+            <div>{usiaLebih} Pastikan cabang yang Anda pilih sesuai.</div>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 12, cursor: 'pointer', fontWeight: 600 }}>
+              <input
+                type="checkbox"
+                checked={usiaAck}
+                onChange={(e) => setUsiaAck(e.target.checked)}
+                style={{ marginTop: 2 }}
+              />
+              Saya paham dan tetap ingin mendaftar di cabang ini.
+            </label>
           </div>
         ) : null}
 

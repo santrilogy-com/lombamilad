@@ -75,7 +75,7 @@ export async function kirimKonfirmasiPendaftar(opts: {
       <div style="max-width:520px;margin:0 auto;background:#e5e2da;border-radius:6px;padding:36px;">
         <div style="font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#8a7c4c;font-weight:700;">Milad ke-290 Pondok Pesantren Sidogiri</div>
         <h1 style="font-size:22px;font-weight:600;margin:12px 0 8px;">Pendaftaran Berhasil</h1>
-        <p>Assalamu'alaikum <strong>${nama}</strong>, terima kasih telah mendaftar cabang <strong>${cabang}</strong>.</p>
+        <p>Assalamu'alaikum <strong>${escapeHtml(nama)}</strong>, terima kasih telah mendaftar cabang <strong>${escapeHtml(cabang)}</strong>.</p>
         <div style="background:#fff;border-radius:6px;padding:18px 20px;margin:18px 0;">
           <div style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#7c7b77;">Nomor Pendaftaran</div>
           <div style="font-size:24px;font-weight:600;color:#675c37;">${nomorPendaftaran}</div>
@@ -113,7 +113,7 @@ export async function kirimLupaStatus(opts: {
       <div style="max-width:520px;margin:0 auto;background:#e5e2da;border-radius:6px;padding:36px;">
         <div style="font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#8a7c4c;font-weight:700;">Milad ke-290 Pondok Pesantren Sidogiri</div>
         <h1 style="font-size:22px;font-weight:600;margin:12px 0 8px;">Nomor Pendaftaran &amp; Token Anda</h1>
-        <p>Assalamu'alaikum <strong>${nama}</strong>, berikut data pendaftaran yang tercatat atas nama Anda:</p>
+        <p>Assalamu'alaikum <strong>${escapeHtml(nama)}</strong>, berikut data pendaftaran yang tercatat atas nama Anda:</p>
         ${rows}
         <p style="font-size:13px;color:#7c7b77;margin-top:20px;">Bila Anda tidak meminta ini, abaikan email ini.</p>
       </div>
@@ -217,7 +217,7 @@ export async function kirimHasilEmail(opts: {
   const html = bungkusEmail(
     'Update Hasil Seleksi',
     `
-      <p style="font-size:14px;line-height:1.6;margin:0 0 16px;">Assalamu'alaikum <strong>${nama}</strong>, cabang <strong>${cabang}</strong> (${nomorPendaftaran}).</p>
+      <p style="font-size:14px;line-height:1.6;margin:0 0 16px;">Assalamu'alaikum <strong>${escapeHtml(nama)}</strong>, cabang <strong>${escapeHtml(cabang)}</strong> (${escapeHtml(nomorPendaftaran)}).</p>
       <p style="font-size:14px;line-height:1.6;margin:0 0 16px;">${pesanUtama}</p>
       <div style="background:${bgBanner};border-radius:6px;padding:14px 18px;margin:0 0 18px;">
         <span style="font-size:13px;font-weight:700;color:${warna};text-transform:uppercase;letter-spacing:0.06em;">${info.label}</span>

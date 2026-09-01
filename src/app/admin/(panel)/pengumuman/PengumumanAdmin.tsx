@@ -19,6 +19,7 @@ export default function PengumumanAdmin({ list }: { list: Item[] }) {
   const [published, setPublished] = useState(true);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
+  const [confirmHapusId, setConfirmHapusId] = useState('');
 
   async function buat(e: React.FormEvent) {
     e.preventDefault();
@@ -65,7 +66,14 @@ export default function PengumumanAdmin({ list }: { list: Item[] }) {
   }
 
   async function hapus(id: string) {
-    if (!confirm('Hapus pengumuman ini?')) return;
+    if (confirmHapusId !== id) {
+      // Klik pertama hanya meminta konfirmasi (ganti label tombol jadi "Yakin?"),
+      // supaya penghapusan tidak terjadi karena klik tidak sengaja.
+      setConfirmHapusId(id);
+      setTimeout(() => setConfirmHapusId((cur) => (cur === id ? '' : cur)), 4000);
+      return;
+    }
+    setConfirmHapusId('');
     setBusy(true);
     try {
       const res = await fetch(`/api/admin/pengumuman?id=${id}`, { method: 'DELETE' });
@@ -138,8 +146,22 @@ export default function PengumumanAdmin({ list }: { list: Item[] }) {
                     <button onClick={() => toggle(p.id, p.published)} disabled={busy} style={{ height: 30, padding: '0 12px', fontSize: 12, background: 'transparent', border: '1px solid rgba(36,33,28,0.25)', borderRadius: 2, cursor: 'pointer' }}>
                       {p.published ? 'Tarik' : 'Terbitkan'}
                     </button>
-                    <button onClick={() => hapus(p.id)} disabled={busy} style={{ height: 30, padding: '0 12px', fontSize: 12, background: 'transparent', border: '1px solid #a94442', color: '#a94442', borderRadius: 2, cursor: 'pointer' }}>
-                      Hapus
+                    <button
+                      onClick={() => hapus(p.id)}
+                      disabled={busy}
+                      style={{
+                        height: 30,
+                        padding: '0 12px',
+                        fontSize: 12,
+                        fontWeight: confirmHapusId === p.id ? 700 : 400,
+                        background: confirmHapusId === p.id ? '#a94442' : 'transparent',
+                        color: confirmHapusId === p.id ? '#fff' : '#a94442',
+                        border: '1px solid #a94442',
+                        borderRadius: 2,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {confirmHapusId === p.id ? 'Yakin? Klik lagi' : 'Hapus'}
                     </button>
                   </div>
                 </div>

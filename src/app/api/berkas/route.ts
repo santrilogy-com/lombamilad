@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { requireAdminSession } from '@/lib/require-admin';
 import { prisma } from '@/lib/prisma';
 import { get as getBlob } from '@vercel/blob';
 import { getR2Object } from '@/lib/storage';
@@ -21,14 +20,20 @@ export async function GET(req: Request) {
   const nomor = url.searchParams.get('nomor');
   const token = url.searchParams.get('token');
 
-  const session = await getServerSession(authOptions);
-  let pendaftar: { fileIdentitas: string | null; fileSubmisi: string | null } | null = null;
+  const session = await requireAdminSession();
+  let rel = '';
 
-  if (session?.user) {
-    // admin: tidak pakai nomor/token
-    const target = url.searchParams.get('file');
-    if (!target) return new NextResponse('Bad request', { status: 400 });
-    pendaftar = { fileIdentitas: target, fileSubmisi: null };
+  if (session) {
+    // admin: identifikasi berkas lewat id record + jenis, bukan path mentah dari klien,
+    // supaya admin tidak bisa dipaksa membaca file arbitrer di server (mis. .env).
+    const id = url.searchParams.get('id');
+    const jenis = url.searchParams.get('jenis');
+    if (!id || (jenis !== 'identitas' && jenis !== 'submisi')) {
+      return new NextResponse('Bad request', { status: 400 });
+    }
+    const found = await prisma.pendaftar.findUnique({ where: { id } });
+    if (!found) return new NextResponse('Not found', { status: 404 });
+    rel = (jenis === 'identitas' ? found.fileIdentitas : found.fileSubmisi) || '';
   } else {
     if (!nomor || !token) return new NextResponse('Unauthorized', { status: 401 });
     const found = await prisma.pendaftar.findUnique({
@@ -37,10 +42,8 @@ export async function GET(req: Request) {
     if (!found || found.tokenCek !== token) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
-    pendaftar = { fileIdentitas: found.fileIdentitas, fileSubmisi: found.fileSubmisi };
+    rel = found.fileIdentitas || '';
   }
-
-  const rel = pendaftar.fileIdentitas || '';
 
   if (rel.startsWith('r2://')) {
     return serveR2(rel);
@@ -60,14 +63,17 @@ export async function GET(req: Request) {
   }
 
   const ext = path.extname(full).toLowerCase();
-  const mime =
-    ext === '.pdf'
-      ? 'application/pdf'
-      : ext === '.png'
-      ? 'image/png'
-      : ext === '.jpg' || ext === '.jpeg'
-      ? 'image/jpeg'
-      : 'application/octet-stream';
+  const MIME_BY_EXT: Record<string, string> = {
+    '.pdf': 'application/pdf',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.webp': 'image/webp',
+    '.mp4': 'video/mp4',
+    '.doc': 'application/msword',
+    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  };
+  const mime = MIME_BY_EXT[ext] || 'application/octet-stream';
 
   const data = fs.readFileSync(full);
   return new NextResponse(new Uint8Array(data), {

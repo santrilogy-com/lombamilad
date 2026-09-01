@@ -18,6 +18,14 @@ export const metadata: Metadata = {
       'Lima cabang lomba tingkat nasional dalam rangkaian Milad ke-290 Pondok Pesantren Sidogiri. Satu Arah dalam Bermanhaj dan Bermadzhab.',
     type: 'website',
     locale: 'id_ID',
+    images: ['/logo.png'],
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Lomba Nasional Milad Sidogiri 290',
+    description:
+      'Lima cabang lomba tingkat nasional dalam rangkaian Milad ke-290 Pondok Pesantren Sidogiri.',
+    images: ['/logo.png'],
   },
 };
 

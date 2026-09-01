@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 type Row = {
   id: string;
@@ -43,6 +43,10 @@ export default function PenilaianTable({
   const [msg, setMsg] = useState('');
   const [statusHasil, setStatusHasil] = useState<Record<string, 'menunggu' | 'terkirim' | 'gagal'>>({});
   const [kirimHasilCabang, setKirimHasilCabang] = useState<string | null>(null);
+  const [konfirmasiKirimHasil, setKonfirmasiKirimHasil] = useState<string | null>(null);
+  const konfirmasiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [konfirmasiProses, setKonfirmasiProses] = useState<string | null>(null);
+  const konfirmasiProsesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const grouped = useMemo(() => {
     const g = new Map<string, Row[]>();
@@ -76,7 +80,21 @@ export default function PenilaianTable({
     }
   }
 
+  function mintaKonfirmasiProses(aksi: string): boolean {
+    // Setiap aksi proses massal (ubah status banyak peserta sekaligus) butuh
+    // klik konfirmasi kedua dulu — supaya tidak terpicu karena klik tidak sengaja.
+    if (konfirmasiProses !== aksi) {
+      if (konfirmasiProsesTimerRef.current) clearTimeout(konfirmasiProsesTimerRef.current);
+      setKonfirmasiProses(aksi);
+      konfirmasiProsesTimerRef.current = setTimeout(() => setKonfirmasiProses((cur) => (cur === aksi ? null : cur)), 5000);
+      return false;
+    }
+    setKonfirmasiProses(null);
+    return true;
+  }
+
   async function prosesKelulusan() {
+    if (!mintaKonfirmasiProses('lulus')) return;
     setBusy(true);
     setMsg('');
     try {
@@ -95,6 +113,7 @@ export default function PenilaianTable({
   }
 
   async function prosesMqk(tahap: 'babak1' | 'babak2') {
+    if (!mintaKonfirmasiProses(tahap)) return;
     setBusy(true);
     setMsg('');
     try {
@@ -117,6 +136,15 @@ export default function PenilaianTable({
   async function kirimHasilKeCabang(cid: string, peserta: Row[]) {
     const target = peserta.filter((p) => p.email && (p.nilaiPenyisihan !== null || p.nilaiBabak2 !== null || p.nilaiFinal !== null));
     if (target.length === 0) return;
+    if (konfirmasiKirimHasil !== cid) {
+      // Klik pertama hanya meminta konfirmasi — supaya hasil tidak terkirim ke
+      // seluruh peserta cabang karena satu klik tidak sengaja.
+      if (konfirmasiTimerRef.current) clearTimeout(konfirmasiTimerRef.current);
+      setKonfirmasiKirimHasil(cid);
+      konfirmasiTimerRef.current = setTimeout(() => setKonfirmasiKirimHasil((cur) => (cur === cid ? null : cur)), 5000);
+      return;
+    }
+    setKonfirmasiKirimHasil(null);
     setKirimHasilCabang(cid);
     const awal: Record<string, 'menunggu'> = {};
     target.forEach((p) => (awal[p.id] = 'menunggu'));
@@ -160,25 +188,25 @@ export default function PenilaianTable({
               <button
                 onClick={() => prosesMqk('babak1')}
                 disabled={busy}
-                style={{ height: 42, padding: '0 18px', background: 'var(--olive)', color: '#fff', border: 0, borderRadius: 2, fontSize: 13, fontWeight: 600, cursor: busy ? 'wait' : 'pointer' }}
+                style={{ height: 42, padding: '0 18px', background: konfirmasiProses === 'babak1' ? '#a94442' : 'var(--olive)', color: '#fff', border: 0, borderRadius: 2, fontSize: 13, fontWeight: 600, cursor: busy ? 'wait' : 'pointer' }}
               >
-                Proses Babak I → II (top 10)
+                {konfirmasiProses === 'babak1' ? 'Yakin? Klik lagi' : 'Proses Babak I → II (top 10)'}
               </button>
               <button
                 onClick={() => prosesMqk('babak2')}
                 disabled={busy}
-                style={{ height: 42, padding: '0 18px', background: 'var(--olive-d)', color: '#fff', border: 0, borderRadius: 2, fontSize: 13, fontWeight: 600, cursor: busy ? 'wait' : 'pointer' }}
+                style={{ height: 42, padding: '0 18px', background: konfirmasiProses === 'babak2' ? '#a94442' : 'var(--olive-d)', color: '#fff', border: 0, borderRadius: 2, fontSize: 13, fontWeight: 600, cursor: busy ? 'wait' : 'pointer' }}
               >
-                Proses Babak II → Final (top 5)
+                {konfirmasiProses === 'babak2' ? 'Yakin? Klik lagi' : 'Proses Babak II → Final (top 5)'}
               </button>
             </>
           ) : (
             <button
               onClick={prosesKelulusan}
               disabled={busy}
-              style={{ height: 42, padding: '0 20px', background: 'var(--olive)', color: '#fff', border: 0, borderRadius: 2, fontSize: 13.5, fontWeight: 600, cursor: busy ? 'wait' : 'pointer' }}
+              style={{ height: 42, padding: '0 20px', background: konfirmasiProses === 'lulus' ? '#a94442' : 'var(--olive)', color: '#fff', border: 0, borderRadius: 2, fontSize: 13.5, fontWeight: 600, cursor: busy ? 'wait' : 'pointer' }}
             >
-              {busy ? 'Memproses...' : 'Proses Kelulusan (top 5 → final)'}
+              {busy ? 'Memproses...' : konfirmasiProses === 'lulus' ? 'Yakin? Klik lagi' : 'Proses Kelulusan (top 5 → final)'}
             </button>
           )}
         </div>
@@ -201,9 +229,23 @@ export default function PenilaianTable({
             <button
               onClick={() => kirimHasilKeCabang(cid, peserta)}
               disabled={kirimHasilCabang === cid || bisaKirim.length === 0}
-              style={{ height: 36, padding: '0 16px', background: 'transparent', border: '1px solid rgba(36,33,28,0.25)', borderRadius: 2, fontSize: 12.5, fontWeight: 600, cursor: bisaKirim.length === 0 ? 'not-allowed' : 'pointer' }}
+              style={{
+                height: 36,
+                padding: '0 16px',
+                background: konfirmasiKirimHasil === cid ? '#a94442' : 'transparent',
+                color: konfirmasiKirimHasil === cid ? '#fff' : 'var(--ink)',
+                border: `1px solid ${konfirmasiKirimHasil === cid ? '#a94442' : 'rgba(36,33,28,0.25)'}`,
+                borderRadius: 2,
+                fontSize: 12.5,
+                fontWeight: 600,
+                cursor: bisaKirim.length === 0 ? 'not-allowed' : 'pointer',
+              }}
             >
-              {kirimHasilCabang === cid ? 'Mengirim…' : `Kirim Hasil ke Email (${bisaKirim.length})`}
+              {kirimHasilCabang === cid
+                ? 'Mengirim…'
+                : konfirmasiKirimHasil === cid
+                  ? `Yakin kirim ke ${bisaKirim.length} peserta? Klik lagi`
+                  : `Kirim Hasil ke Email (${bisaKirim.length})`}
             </button>
           </div>
           <div style={{ overflowX: 'auto' }}>

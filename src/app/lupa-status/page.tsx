@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { CONTACT_WA } from '@/lib/data';
 
 type Hasil = { nomorPendaftaran: string; tokenCek: string; cabang: string };
 
@@ -28,7 +29,7 @@ export default function LupaStatusPage() {
       try {
         data = raw ? JSON.parse(raw) : null;
       } catch {
-        throw new Error('Terjadi kesalahan pada server. Silakan coba lagi.');
+        throw new Error(`Terjadi kesalahan pada server. Silakan coba lagi, atau hubungi panitia via WhatsApp di ${CONTACT_WA[0]} bila masalah berlanjut.`);
       }
       if (!res.ok) throw new Error(data?.error || 'Data tidak ditemukan');
       setHasil(data.hasil);

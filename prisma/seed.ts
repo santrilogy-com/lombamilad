@@ -15,10 +15,17 @@ async function main() {
   }
   console.log(`Seeded ${LOMBA.length} cabang.`);
 
-  // Admin default
-  const email = process.env.ADMIN_EMAIL || 'admin@miladsidogiri.id';
-  const password = process.env.ADMIN_PASSWORD || 'Sidogiri290!';
+  // Admin default — wajib di-set eksplisit lewat env, tidak boleh jatuh ke
+  // kredensial tebakan (dulu ada default "Sidogiri290!" yang juga tertulis
+  // di .env.example, jadi tebakan pertama siapa pun yang membaca repo ini).
+  const email = process.env.ADMIN_EMAIL;
+  const password = process.env.ADMIN_PASSWORD;
   const nama = process.env.ADMIN_NAMA || 'Administrator';
+  if (!email || !password) {
+    throw new Error(
+      'ADMIN_EMAIL dan ADMIN_PASSWORD wajib diset di environment sebelum menjalankan seed (tidak ada default lagi).'
+    );
+  }
   const existing = await prisma.admin.findUnique({ where: { email } });
   if (!existing) {
     await prisma.admin.create({

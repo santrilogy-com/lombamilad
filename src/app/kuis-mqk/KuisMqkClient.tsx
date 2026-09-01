@@ -62,6 +62,7 @@ export default function KuisMqkClient() {
 
   const credRef = useRef({ nomor: '', token: '' });
   const lapoRef = useRef(0);
+  const pendingWarnRef = useRef(false);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function tampilkanToast(pesan: string) {
@@ -72,21 +73,31 @@ export default function KuisMqkClient() {
 
   const muatSoal = useCallback(async () => {
     const { nomor: n, token: t } = credRef.current;
-    const res = await fetch(`/api/kuis/soal?${new URLSearchParams({ nomor: n, token: t })}`);
-    const data: SoalResponse | { error: string } = await res.json();
-    if (!res.ok || 'error' in data) {
-      setError((data as any)?.error || 'Terjadi kesalahan memuat soal.');
-      return;
-    }
-    if (data.selesai) {
-      setHasil({ skor: data.skor, benar: data.benar, total: data.total });
-      setStep('selesai');
-    } else {
-      setSoal(data.soal);
-      setNomorSoal(data.nomorSoal);
-      setTotal(data.total);
-      setSisaDetik(data.sisaDetik);
-      setStep('sedang');
+    try {
+      const res = await fetch(`/api/kuis/soal?${new URLSearchParams({ nomor: n, token: t })}`);
+      const raw = await res.text();
+      let data: SoalResponse | { error: string } | null = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        throw new Error('Gagal memuat soal berikutnya. Periksa koneksi internet Anda dan coba lagi.');
+      }
+      if (!res.ok || !data || 'error' in data) {
+        setError((data as any)?.error || 'Terjadi kesalahan memuat soal.');
+        return;
+      }
+      if (data.selesai) {
+        setHasil({ skor: data.skor, benar: data.benar, total: data.total });
+        setStep('selesai');
+      } else {
+        setSoal(data.soal);
+        setNomorSoal(data.nomorSoal);
+        setTotal(data.total);
+        setSisaDetik(data.sisaDetik);
+        setStep('sedang');
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Gagal memuat soal berikutnya. Periksa koneksi internet Anda dan coba lagi.');
     }
   }, []);
 
@@ -102,7 +113,13 @@ export default function KuisMqkClient() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nomor: n, token: t }),
       });
-      const data = await res.json();
+      const raw = await res.text();
+      let data: any = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        throw new Error('Tidak dapat memulai kuis. Periksa koneksi internet Anda dan coba lagi.');
+      }
       if (!res.ok) throw new Error(data?.error || 'Tidak dapat memulai kuis.');
       credRef.current = { nomor: n.trim().toUpperCase(), token: t.trim() };
       await muatSoal();
@@ -132,8 +149,14 @@ export default function KuisMqkClient() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nomor: n, token: t, soalId: soal.id, pilihan }),
       });
-      const data: SoalResponse | { error: string } = await res.json();
-      if (!res.ok || 'error' in data) throw new Error((data as any)?.error || 'Gagal mengirim jawaban.');
+      const raw = await res.text();
+      let data: SoalResponse | { error: string } | null = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        throw new Error('Gagal mengirim jawaban. Periksa koneksi internet Anda dan coba lagi.');
+      }
+      if (!res.ok || !data || 'error' in data) throw new Error((data as any)?.error || 'Gagal mengirim jawaban.');
       if (data.selesai) {
         setHasil({ skor: data.skor, benar: data.benar, total: data.total });
         setStep('selesai');
@@ -155,14 +178,17 @@ export default function KuisMqkClient() {
   useEffect(() => {
     if (step !== 'sedang') return;
     if (sisaDetik <= 0) {
+      tampilkanToast('Waktu habis — soal berikutnya dimuat');
       muatSoal();
       return;
     }
     const t = setTimeout(() => setSisaDetik((s) => s - 1), 1000);
     return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, sisaDetik, muatSoal]);
 
-  // Lapor bila peserta pindah tab / minimize saat kuis berlangsung.
+  // Lapor bila peserta pindah tab / minimize saat kuis berlangsung, dan beri
+  // tahu peserta secara terbuka bahwa ini tercatat (bukan diam-diam).
   useEffect(() => {
     if (step !== 'sedang') return;
     function onVisibility() {
@@ -170,16 +196,33 @@ export default function KuisMqkClient() {
         const now = Date.now();
         if (now - lapoRef.current < 3000) return;
         lapoRef.current = now;
+        pendingWarnRef.current = true;
         const { nomor: n, token: t } = credRef.current;
         fetch('/api/kuis/mencurigakan', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ nomor: n, token: t }),
         }).catch(() => {});
+      } else if (pendingWarnRef.current) {
+        pendingWarnRef.current = false;
+        tampilkanToast('Anda berpindah tab — aktivitas ini tercatat');
       }
     }
     document.addEventListener('visibilitychange', onVisibility);
     return () => document.removeEventListener('visibilitychange', onVisibility);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
+  // Peringatkan sebelum menutup/memuat ulang halaman saat kuis berlangsung,
+  // supaya peserta tidak kehilangan waktu soal karena refresh tidak sengaja.
+  useEffect(() => {
+    if (step !== 'sedang') return;
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [step]);
 
   return (
@@ -220,7 +263,9 @@ export default function KuisMqkClient() {
           <p style={{ fontSize: 15, lineHeight: 1.6, color: '#4b4740', margin: '0 0 32px' }}>
             50 soal nahwu, fikih, dan sharaf dari Kitab Fathul-Mu&rsquo;in Bab Ubudiyah. Waktu 15 detik
             per soal, tidak bisa kembali ke soal sebelumnya, dan kuis hanya dapat dikerjakan satu kali.
-            Pastikan koneksi internet stabil sebelum memulai.
+            Pastikan koneksi internet stabil sebelum memulai — jangan tutup atau muat ulang halaman
+            selama kuis berlangsung. Sistem mencatat bila Anda berpindah tab/aplikasi lain saat
+            mengerjakan; hindari melakukannya agar tidak dianggap mencurigakan oleh panitia.
           </p>
           <form onSubmit={(e) => { e.preventDefault(); mulai(); }} style={{ display: 'grid', gap: 16 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

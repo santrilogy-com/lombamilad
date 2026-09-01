@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
@@ -38,8 +39,7 @@ export default function AdminNav({ email, nama }: { email: string; nama: string 
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="Milad 290" style={{ height: 24, width: 'auto' }} />
+          <Image src="/logo.png" alt="Milad 290" width={42} height={24} style={{ height: 24, width: 'auto' }} />
           <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--olive)', textTransform: 'uppercase' }}>
             Panel Admin
           </span>

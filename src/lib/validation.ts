@@ -1,3 +1,4 @@
+import { randomInt } from 'crypto';
 import { z } from 'zod';
 
 export const MAX_USIA_TIAP_CABANG: Record<string, number> = {
@@ -45,9 +46,11 @@ export function buatNomorPendaftaran(urutan: number, cabang: string): string {
 }
 
 export function buatToken(): string {
-  // 8 karakter alfanumerik aman (tanpa karakter ambigu)
+  // 8 karakter alfanumerik aman (tanpa karakter ambigu), dibangkitkan dengan
+  // CSPRNG (bukan Math.random) karena token ini jadi satu-satunya kredensial
+  // akses ke data pribadi & berkas peserta lewat cek-status.
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let s = '';
-  for (let i = 0; i < 8; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  for (let i = 0; i < 8; i++) s += chars[randomInt(chars.length)];
   return s;
 }

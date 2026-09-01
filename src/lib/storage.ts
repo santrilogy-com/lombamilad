@@ -15,10 +15,44 @@ const LOCAL_DIR = process.env.LOCAL_STORAGE_DIR || './storage/uploads';
 
 export type SavedFile = { url: string; name: string; size: number };
 
+// Daftar tipe MIME ini harus selaras dengan atribut `accept` pada input file di
+// src/app/daftar/page.tsx — kalau tidak, peserta bisa memilih berkas yang lolos
+// validasi browser tapi selalu ditolak server dengan pesan generik.
 const ALLOWED_TYPES: Record<string, string[]> = {
-  image: ['image/jpeg', 'image/png', 'image/webp'],
-  document: ['application/pdf'],
+  // Kartu tanda pengenal: scan/foto (accept="image/*,.pdf")
+  identitas: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
+  // Berkas submisi: naskah atau video (accept=".pdf,.doc,.docx,image/*,.mp4")
+  submisi: [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'video/mp4',
+  ],
 };
+
+// file.type datang dari klien (Content-Type yang dilaporkan browser) dan bisa
+// dipalsukan dengan mudah (mis. ganti ekstensi/mime lewat DevTools atau curl).
+// Sebagai lapisan kedua, sniff beberapa byte pertama isi berkas dan cocokkan
+// dengan signature format aslinya sebelum diterima.
+const MAGIC_CHECKS: Record<string, (b: Buffer) => boolean> = {
+  'application/pdf': (b) => b.subarray(0, 4).toString('latin1') === '%PDF',
+  'image/png': (b) => b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])),
+  'image/jpeg': (b) => b.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff])),
+  'image/webp': (b) => b.subarray(0, 4).toString('latin1') === 'RIFF' && b.subarray(8, 12).toString('latin1') === 'WEBP',
+  'video/mp4': (b) => b.subarray(4, 8).toString('latin1') === 'ftyp',
+  'application/msword': (b) => b.subarray(0, 8).equals(Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1])),
+  // .docx adalah arsip ZIP (signature PK\x03\x04)
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': (b) =>
+    b.subarray(0, 4).equals(Buffer.from([0x50, 0x4b, 0x03, 0x04])),
+};
+
+function isiSesuaiTipe(bytes: Buffer, mime: string): boolean {
+  const check = MAGIC_CHECKS[mime];
+  return check ? check(bytes) : true;
+}
 
 function ensureLocalDir(dir: string) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -49,7 +83,7 @@ function r2Bucket() {
 
 export async function saveFile(
   file: File,
-  kind: 'image' | 'document',
+  kind: 'identitas' | 'submisi',
   subdir: string
 ): Promise<SavedFile> {
   const allowed = ALLOWED_TYPES[kind] || [];
@@ -65,6 +99,9 @@ export async function saveFile(
   }
 
   const bytes = Buffer.from(await file.arrayBuffer());
+  if (!isiSesuaiTipe(bytes, file.type)) {
+    throw new Error('Isi berkas tidak sesuai dengan tipe filenya. Pastikan berkas tidak rusak dan coba unggah ulang.');
+  }
   const ext = file.name.split('.').pop()?.toLowerCase() || (file.type === 'application/pdf' ? 'pdf' : 'img');
   const filename = `${Date.now()}-${randomUUID().slice(0, 8)}.${ext}`;
 

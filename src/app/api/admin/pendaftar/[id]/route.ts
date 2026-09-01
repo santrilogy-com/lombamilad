@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { requireAdminSession } from '@/lib/require-admin';
 import { prisma } from '@/lib/prisma';
+import { deleteFile } from '@/lib/storage';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -19,8 +19,8 @@ const VALID_STATUS = [
 ];
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return new NextResponse('Unauthorized', { status: 401 });
+  const session = await requireAdminSession();
+  if (!session) return new NextResponse('Unauthorized', { status: 401 });
 
   const { id } = params;
   const body = await req.json().catch(() => ({}));
@@ -96,4 +96,31 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   });
 
   return NextResponse.json({ success: true, pendaftar: updated });
+}
+
+export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+  const session = await requireAdminSession();
+  if (!session) return new NextResponse('Unauthorized', { status: 401 });
+
+  const { id } = params;
+  const pendaftar = await prisma.pendaftar.findUnique({ where: { id } });
+  if (!pendaftar) return NextResponse.json({ error: 'Pendaftar tidak ditemukan' }, { status: 404 });
+
+  // Hapus baris anak dulu (Nilai/KuisAttempt tidak punya onDelete: Cascade di
+  // schema) baru baris Pendaftar-nya, dalam satu transaksi supaya konsisten.
+  await prisma.$transaction([
+    prisma.nilai.deleteMany({ where: { pendaftarId: id } }),
+    prisma.kuisAttempt.deleteMany({ where: { pendaftarId: id } }),
+    prisma.pendaftar.delete({ where: { id } }),
+  ]);
+
+  // Best-effort: hapus berkas yang diunggah. Kegagalan di sini tidak boleh
+  // membuat penghapusan data terlihat gagal — record DB sudah terhapus.
+  await Promise.all(
+    [pendaftar.fileIdentitas, pendaftar.fileSubmisi]
+      .filter((u): u is string => !!u)
+      .map((u) => deleteFile(u).catch(() => {}))
+  );
+
+  return NextResponse.json({ success: true });
 }

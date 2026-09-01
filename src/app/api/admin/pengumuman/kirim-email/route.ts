@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { requireAdminSession } from '@/lib/require-admin';
 import { prisma } from '@/lib/prisma';
 import { kirimPengumumanEmail } from '@/lib/email';
 
@@ -12,8 +11,8 @@ export const dynamic = 'force-dynamic';
 const MAKS_PER_PERMINTAAN = 15;
 
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return new NextResponse('Unauthorized', { status: 401 });
+  const session = await requireAdminSession();
+  if (!session) return new NextResponse('Unauthorized', { status: 401 });
 
   const body = await req.json().catch(() => ({}));
   const judul = String(body.judul || '').trim();

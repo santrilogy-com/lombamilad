@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DEADLINE_MAIN } from '@/lib/data';
@@ -65,25 +66,29 @@ export default function Hero() {
       <div
         aria-hidden="true"
         className="hero-orn hero-orn-bawah"
-        style={{
-          backgroundImage: 'url(/ornamen-bawah.png)',
-          backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'left bottom',
-          opacity: 0.6,
-          animation: 'ornamentGlow 11000ms ease-in-out infinite',
-        }}
-      />
+        style={{ opacity: 0.6, animation: 'ornamentGlow 11000ms ease-in-out infinite' }}
+      >
+        <Image
+          src="/ornamen-bawah.png"
+          alt=""
+          fill
+          sizes="62vw"
+          style={{ objectFit: 'cover', objectPosition: 'left bottom' }}
+        />
+      </div>
       <div
         aria-hidden="true"
         className="hero-orn hero-orn-atas"
-        style={{
-          backgroundImage: 'url(/ornamen-atas.png)',
-          backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'right top',
-          opacity: 0.55,
-          animation: 'ornamentGlow 9500ms ease-in-out infinite 400ms',
-        }}
-      />
+        style={{ opacity: 0.55, animation: 'ornamentGlow 9500ms ease-in-out infinite 400ms' }}
+      >
+        <Image
+          src="/ornamen-atas.png"
+          alt=""
+          fill
+          sizes="46vw"
+          style={{ objectFit: 'cover', objectPosition: 'right top' }}
+        />
+      </div>
 
       <div
         className="g-hero"
@@ -292,23 +297,20 @@ export default function Hero() {
                 filter: 'drop-shadow(0 10px 26px rgba(36,33,28,0.16))',
               }}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src="/hero-2.png"
                 alt=""
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  width: '100%',
-                  height: '100%',
-                  animation: 'cmpPop 1000ms cubic-bezier(0.16,1,0.3,1) 120ms both',
-                }}
+                fill
+                priority
+                sizes="(max-width: 860px) 70vw, 34vw"
+                style={{ animation: 'cmpPop 1000ms cubic-bezier(0.16,1,0.3,1) 120ms both' }}
               />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src="/logo-needle.png"
                 alt=""
                 className="hero-needle"
+                width={132}
+                height={132}
                 style={{
                   position: 'absolute',
                   left: '72.581%',
@@ -319,41 +321,26 @@ export default function Hero() {
                   animation: 'ndlSweep 1700ms cubic-bezier(0.16,1,0.3,1) 700ms both',
                 }}
               />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src="/hero-3.png"
                 alt=""
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  width: '100%',
-                  height: '100%',
-                  animation: 'numWipe 1300ms cubic-bezier(0.16,1,0.3,1) 1900ms both',
-                }}
+                fill
+                sizes="(max-width: 860px) 70vw, 34vw"
+                style={{ animation: 'numWipe 1300ms cubic-bezier(0.16,1,0.3,1) 1900ms both' }}
               />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src="/hero-1.png"
                 alt=""
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  width: '100%',
-                  height: '100%',
-                  animation: 'layerRise 1000ms cubic-bezier(0.16,1,0.3,1) 2500ms both',
-                }}
+                fill
+                sizes="(max-width: 860px) 70vw, 34vw"
+                style={{ animation: 'layerRise 1000ms cubic-bezier(0.16,1,0.3,1) 2500ms both' }}
               />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src="/hero-4.png"
                 alt=""
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  width: '100%',
-                  height: '100%',
-                  animation: 'layerRise 1000ms cubic-bezier(0.16,1,0.3,1) 2900ms both',
-                }}
+                fill
+                sizes="(max-width: 860px) 70vw, 34vw"
+                style={{ animation: 'layerRise 1000ms cubic-bezier(0.16,1,0.3,1) 2900ms both' }}
               />
             </div>
           </div>

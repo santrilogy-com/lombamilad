@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { LOMBA } from '@/lib/data';
 import { buatTautanWa } from '@/lib/whatsapp';
 
@@ -107,6 +107,8 @@ export default function BroadcastWa({ peserta, pengumuman }: { peserta: Peserta[
   const [pesanError, setPesanError] = useState<Record<string, string>>({});
   const [kirimBusy, setKirimBusy] = useState(false);
   const [progres, setProgres] = useState({ selesai: 0, total: 0 });
+  const [konfirmasiKirim, setKonfirmasiKirim] = useState(false);
+  const konfirmasiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pesanRef = useRef<HTMLTextAreaElement>(null);
 
   function pilihPengumuman(id: string) {
@@ -155,12 +157,33 @@ export default function BroadcastWa({ peserta, pengumuman }: { peserta: Peserta[
     });
   }, [peserta, cabangId, statusDipilih, cari]);
 
+  // Batalkan konfirmasi kirim yang tertunda bila target/isi pesan berubah,
+  // supaya klik konfirmasi tidak "nyasar" ke daftar penerima yang berbeda.
+  useEffect(() => {
+    if (konfirmasiTimerRef.current) clearTimeout(konfirmasiTimerRef.current);
+    setKonfirmasiKirim(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [judul, pesan, cabangId, statusDipilih, cari]);
+
   const bisaKirim = judul.trim() && pesan.trim();
+
+  function batalkanKonfirmasi() {
+    if (konfirmasiTimerRef.current) clearTimeout(konfirmasiTimerRef.current);
+    setKonfirmasiKirim(false);
+  }
 
   async function kirimEmailMassal() {
     if (!bisaKirim || kirimBusy) return;
     const target = filtered.filter((p) => p.email);
     if (target.length === 0) return;
+    if (!konfirmasiKirim) {
+      // Klik pertama hanya meminta konfirmasi eksplisit — supaya broadcast ke
+      // ratusan peserta sekaligus tidak terkirim karena satu klik tidak sengaja.
+      setKonfirmasiKirim(true);
+      konfirmasiTimerRef.current = setTimeout(() => setKonfirmasiKirim(false), 5000);
+      return;
+    }
+    batalkanKonfirmasi();
     setKirimBusy(true);
     setProgres({ selesai: 0, total: target.length });
     const statusBaru: Record<string, StatusKirim> = {};
@@ -313,13 +336,38 @@ export default function BroadcastWa({ peserta, pengumuman }: { peserta: Peserta[
           </div>
         </div>
 
-        <button
-          onClick={kirimEmailMassal}
-          disabled={!bisaKirim || kirimBusy || filtered.filter((p) => p.email).length === 0}
-          style={{ height: 44, padding: '0 22px', background: 'var(--ink)', color: 'var(--paper)', border: 0, borderRadius: 2, fontSize: 13.5, fontWeight: 600, cursor: kirimBusy ? 'wait' : 'pointer' }}
-        >
-          {kirimBusy ? `Mengirim email... ${progres.selesai}/${progres.total}` : `Kirim Email ke ${filtered.filter((p) => p.email).length} Peserta`}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <button
+            onClick={kirimEmailMassal}
+            disabled={!bisaKirim || kirimBusy || filtered.filter((p) => p.email).length === 0}
+            style={{
+              height: 44,
+              padding: '0 22px',
+              background: konfirmasiKirim ? '#a94442' : 'var(--ink)',
+              color: 'var(--paper)',
+              border: 0,
+              borderRadius: 2,
+              fontSize: 13.5,
+              fontWeight: 600,
+              cursor: kirimBusy ? 'wait' : 'pointer',
+            }}
+          >
+            {kirimBusy
+              ? `Mengirim email... ${progres.selesai}/${progres.total}`
+              : konfirmasiKirim
+                ? `Yakin kirim ke ${filtered.filter((p) => p.email).length} peserta? Klik lagi`
+                : `Kirim Email ke ${filtered.filter((p) => p.email).length} Peserta`}
+          </button>
+          {konfirmasiKirim ? (
+            <button
+              type="button"
+              onClick={batalkanKonfirmasi}
+              style={{ height: 44, padding: '0 16px', background: 'transparent', border: '1px solid rgba(36,33,28,0.25)', borderRadius: 2, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+            >
+              Batal
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--grey)', marginBottom: 10 }}>

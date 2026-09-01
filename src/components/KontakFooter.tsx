@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { CONTACT_WA, WEBSITE, SIDOGIRI_NET } from '@/lib/data';
 
@@ -132,10 +133,11 @@ export default function KontakFooter() {
       >
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src="/logo.png"
               alt="Milad ke-290 Pondok Pesantren Sidogiri"
+              width={67}
+              height={38}
               style={{ display: 'block', height: 38, width: 'auto' }}
             />
             <span

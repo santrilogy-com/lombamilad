@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { requireAdminSession } from '@/lib/require-admin';
 import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
@@ -9,8 +8,8 @@ export const dynamic = 'force-dynamic';
 const VALID_JAWABAN = ['A', 'B', 'C', 'D'];
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return new NextResponse('Unauthorized', { status: 401 });
+  const session = await requireAdminSession();
+  if (!session) return new NextResponse('Unauthorized', { status: 401 });
 
   const soal = await prisma.soalKuis.findMany({
     where: { cabangId: 'mqk' },
@@ -20,8 +19,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return new NextResponse('Unauthorized', { status: 401 });
+  const session = await requireAdminSession();
+  if (!session) return new NextResponse('Unauthorized', { status: 401 });
 
   const body = await req.json().catch(() => ({}));
   const { soal, pilihanA, pilihanB, pilihanC, pilihanD, jawaban, kategori, urutan } = body;
@@ -49,4 +48,22 @@ export async function POST(req: Request) {
   });
 
   return NextResponse.json({ soal: created });
+}
+
+const MAKS_PER_PERMINTAAN = 300;
+
+/** Hapus banyak soal sekaligus — dipanggil dari aksi "Hapus terpilih" di bank soal. */
+export async function DELETE(req: Request) {
+  const session = await requireAdminSession();
+  if (!session) return new NextResponse('Unauthorized', { status: 401 });
+
+  const body = await req.json().catch(() => ({}));
+  const ids: string[] = Array.isArray(body.ids) ? body.ids.filter((x: unknown) => typeof x === 'string') : [];
+  if (ids.length === 0) return NextResponse.json({ error: 'Tidak ada soal yang dipilih.' }, { status: 400 });
+  if (ids.length > MAKS_PER_PERMINTAAN) {
+    return NextResponse.json({ error: `Maksimal ${MAKS_PER_PERMINTAAN} soal per permintaan.` }, { status: 400 });
+  }
+
+  const { count } = await prisma.soalKuis.deleteMany({ where: { id: { in: ids } } });
+  return NextResponse.json({ success: true, dihapus: count });
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 type Soal = {
   id: string;
@@ -72,6 +72,11 @@ export default function SoalKuisManager({
   const [tambah, setTambah] = useState({ soal: '', pilihanA: '', pilihanB: '', pilihanC: '', pilihanD: '', jawaban: 'A', kategori: '' });
   const [teksImpor, setTeksImpor] = useState('');
   const [hasilImpor, setHasilImpor] = useState<{ berhasil: number; gagal: { baris: number; alasan: string }[] } | null>(null);
+  const [terpilih, setTerpilih] = useState<Set<string>>(new Set());
+  const [konfirmasiHapusMassal, setKonfirmasiHapusMassal] = useState(false);
+  const timerHapusMassalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [konfirmasiHapusId, setKonfirmasiHapusId] = useState('');
+  const timerHapusRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function tampilkanPesan(t: string) {
     setMsg(t);
@@ -135,12 +140,66 @@ export default function SoalKuisManager({
   }
 
   async function hapusSoal(id: string) {
+    if (konfirmasiHapusId !== id) {
+      if (timerHapusRef.current) clearTimeout(timerHapusRef.current);
+      setKonfirmasiHapusId(id);
+      timerHapusRef.current = setTimeout(() => setKonfirmasiHapusId((cur) => (cur === id ? '' : cur)), 4000);
+      return;
+    }
+    setKonfirmasiHapusId('');
     setBusy(true);
     try {
       const res = await fetch(`/api/admin/soal-kuis/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Gagal menghapus soal');
       setSoal((s) => s.filter((x) => x.id !== id));
+      setTerpilih((s) => {
+        const next = new Set(s);
+        next.delete(id);
+        return next;
+      });
       tampilkanPesan('Soal dihapus.');
+    } catch (e: any) {
+      tampilkanPesan(e.message || 'Gagal');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function toggleTerpilih(id: string) {
+    setTerpilih((s) => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSemuaSoal() {
+    setTerpilih((s) => (s.size === soal.length ? new Set() : new Set(soal.map((x) => x.id))));
+  }
+
+  async function hapusTerpilih() {
+    if (terpilih.size === 0) return;
+    if (!konfirmasiHapusMassal) {
+      if (timerHapusMassalRef.current) clearTimeout(timerHapusMassalRef.current);
+      setKonfirmasiHapusMassal(true);
+      timerHapusMassalRef.current = setTimeout(() => setKonfirmasiHapusMassal(false), 5000);
+      return;
+    }
+    setKonfirmasiHapusMassal(false);
+    setBusy(true);
+    try {
+      const ids = Array.from(terpilih);
+      const res = await fetch('/api/admin/soal-kuis', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || 'Gagal menghapus soal terpilih');
+      setSoal((s) => s.filter((x) => !terpilih.has(x.id)));
+      setTerpilih(new Set());
+      tampilkanPesan(`${data.dihapus ?? ids.length} soal dihapus.`);
     } catch (e: any) {
       tampilkanPesan(e.message || 'Gagal');
     } finally {
@@ -276,11 +335,39 @@ export default function SoalKuisManager({
 
       {/* Daftar soal */}
       <div style={cardStyle}>
-        <h3 style={{ fontFamily: 'var(--disp)', fontWeight: 400, fontSize: 17, margin: '0 0 14px' }}>Bank soal ({soal.length})</h3>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
+          <h3 style={{ fontFamily: 'var(--disp)', fontWeight: 400, fontSize: 17, margin: 0 }}>Bank soal ({soal.length})</h3>
+          <button
+            type="button"
+            onClick={hapusTerpilih}
+            disabled={terpilih.size === 0 || busy}
+            style={{
+              height: 34,
+              padding: '0 14px',
+              fontSize: 12.5,
+              fontWeight: 600,
+              background: terpilih.size === 0 ? 'transparent' : konfirmasiHapusMassal ? '#a94442' : 'transparent',
+              color: terpilih.size === 0 ? 'var(--grey)' : konfirmasiHapusMassal ? '#fff' : '#a94442',
+              border: `1px solid ${terpilih.size === 0 ? 'rgba(36,33,28,0.2)' : '#a94442'}`,
+              borderRadius: 2,
+              cursor: terpilih.size === 0 ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {konfirmasiHapusMassal ? `Yakin hapus ${terpilih.size} soal? Klik lagi` : `Hapus Terpilih (${terpilih.size})`}
+          </button>
+        </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
             <thead>
               <tr style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--grey)', textAlign: 'left' }}>
+                <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>
+                  <input
+                    type="checkbox"
+                    checked={soal.length > 0 && terpilih.size === soal.length}
+                    onChange={toggleSemuaSoal}
+                    aria-label="Pilih semua soal"
+                  />
+                </th>
                 <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Soal</th>
                 <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Jawaban</th>
                 <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Kategori</th>
@@ -291,6 +378,9 @@ export default function SoalKuisManager({
             <tbody>
               {soal.map((s) => (
                 <tr key={s.id}>
+                  <td style={{ padding: '10px', borderBottom: '1px solid var(--line)' }}>
+                    <input type="checkbox" checked={terpilih.has(s.id)} onChange={() => toggleTerpilih(s.id)} aria-label={`Pilih soal: ${s.soal}`} />
+                  </td>
                   <td style={{ padding: '10px', borderBottom: '1px solid var(--line)', fontSize: 13, maxWidth: 360 }}>{s.soal}</td>
                   <td style={{ padding: '10px', borderBottom: '1px solid var(--line)', fontSize: 13, fontWeight: 700 }}>{s.jawaban}</td>
                   <td style={{ padding: '10px', borderBottom: '1px solid var(--line)', fontSize: 12.5, color: '#6b665c' }}>{s.kategori || '–'}</td>
@@ -298,15 +388,29 @@ export default function SoalKuisManager({
                     <input type="checkbox" checked={s.aktif} disabled={busy} onChange={(e) => toggleAktif(s.id, e.target.checked)} />
                   </td>
                   <td style={{ padding: '10px', borderBottom: '1px solid var(--line)' }}>
-                    <button onClick={() => hapusSoal(s.id)} disabled={busy} style={{ fontSize: 12, color: '#a94442', background: 'transparent', border: 0, cursor: 'pointer', fontWeight: 600 }}>
-                      Hapus
+                    <button
+                      onClick={() => hapusSoal(s.id)}
+                      disabled={busy}
+                      style={{
+                        fontSize: 12,
+                        color: konfirmasiHapusId === s.id ? '#fff' : '#a94442',
+                        background: konfirmasiHapusId === s.id ? '#a94442' : 'transparent',
+                        border: 0,
+                        borderRadius: 2,
+                        padding: konfirmasiHapusId === s.id ? '4px 8px' : 0,
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {konfirmasiHapusId === s.id ? 'Yakin?' : 'Hapus'}
                     </button>
                   </td>
                 </tr>
               ))}
               {soal.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ padding: '16px 10px', fontSize: 13, color: '#5a554c' }}>Belum ada soal.</td>
+                  <td colSpan={6} style={{ padding: '16px 10px', fontSize: 13, color: '#5a554c' }}>Belum ada soal.</td>
                 </tr>
               ) : null}
             </tbody>

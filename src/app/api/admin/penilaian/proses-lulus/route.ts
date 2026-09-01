@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { requireAdminSession } from '@/lib/require-admin';
 import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
@@ -9,8 +8,8 @@ export const dynamic = 'force-dynamic';
 const JUMLAH_FINALIST = 5;
 
 export async function POST() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return new NextResponse('Unauthorized', { status: 401 });
+  const session = await requireAdminSession();
+  if (!session) return new NextResponse('Unauthorized', { status: 401 });
 
   // Ambil semua peserta terverifikasi (yang sudah di-input nilai penyisihan)
   const peserta = await prisma.pendaftar.findMany({

@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
 
@@ -32,10 +33,12 @@ export default function Navbar({ inverted = false }: { inverted?: boolean }) {
       }}
     >
       <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 14, color: 'var(--ink)' }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src="/logo.png"
           alt="Milad ke-290 Pondok Pesantren Sidogiri"
+          width={53}
+          height={30}
+          priority
           style={{ display: 'block', height: 30, width: 'auto' }}
         />
         <span
