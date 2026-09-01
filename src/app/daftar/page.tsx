@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { LOMBA, STEPS, CONTACT_WA } from '@/lib/data';
+import PageOrnaments from '@/components/PageOrnaments';
 
 export default function DaftarPage() {
   const [tglLahir, setTglLahir] = useState('');
@@ -127,6 +128,8 @@ export default function DaftarPage() {
 
   if (sent) {
     return (
+      <div style={{ position: 'relative', overflow: 'hidden' }}>
+      <PageOrnaments />
       <main style={{ maxWidth: 760, margin: '0 auto', padding: 'clamp(48px, 6vw, 90px) clamp(20px,4vw,40px)' }}>
         <div
           style={{
@@ -183,11 +186,14 @@ export default function DaftarPage() {
           </div>
         </div>
       </main>
+      </div>
     );
   }
 
   return (
-    <main style={{ maxWidth: 960, margin: '0 auto', padding: 'clamp(40px, 5vw, 72px) clamp(20px, 4vw, 40px)' }}>
+    <div style={{ position: 'relative', overflow: 'hidden' }}>
+      <PageOrnaments />
+      <main style={{ maxWidth: 960, margin: '0 auto', padding: 'clamp(40px, 5vw, 72px) clamp(20px, 4vw, 40px)' }}>
       <div style={{ marginBottom: 40 }}>
         <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--olive)' }}>
           Formulir Pendaftaran
@@ -358,6 +364,7 @@ export default function DaftarPage() {
           ))}
         </div>
       </div>
-    </main>
+      </main>
+    </div>
   );
 }
