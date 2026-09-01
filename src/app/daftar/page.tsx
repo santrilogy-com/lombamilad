@@ -128,7 +128,7 @@ export default function DaftarPage() {
 
   if (sent) {
     return (
-      <div style={{ position: 'relative', overflow: 'hidden', minHeight: '100%' }}>
+      <div style={{ position: 'relative', overflow: 'hidden', minHeight: '100vh' }}>
       <PageOrnaments />
       <main style={{ maxWidth: 760, margin: '0 auto', padding: 'clamp(48px, 6vw, 90px) clamp(20px,4vw,40px)' }}>
         <div
@@ -191,7 +191,7 @@ export default function DaftarPage() {
   }
 
   return (
-    <div style={{ position: 'relative', overflow: 'hidden', minHeight: '100%' }}>
+    <div style={{ position: 'relative', overflow: 'hidden', minHeight: '100vh' }}>
       <PageOrnaments />
       <main style={{ maxWidth: 960, margin: '0 auto', padding: 'clamp(40px, 5vw, 72px) clamp(20px, 4vw, 40px)' }}>
       <div style={{ marginBottom: 40 }}>
