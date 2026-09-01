@@ -74,6 +74,8 @@ export default function KuisMqkClient() {
   const fotoAkhirKirimRef = useRef(false);
   const lapoKameraRef = useRef(0);
   const lapoResizeRef = useRef(0);
+  const lapoFullscreenRef = useRef(0);
+  const [fullscreenAktif, setFullscreenAktif] = useState(false);
 
   function tampilkanToast(pesan: string) {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -81,18 +83,22 @@ export default function KuisMqkClient() {
     toastTimerRef.current = setTimeout(() => setToast(''), 1800);
   }
 
-  function laporKameraTerputus() {
-    const now = Date.now();
-    if (now - lapoKameraRef.current < 3000) return;
-    lapoKameraRef.current = now;
-    tampilkanToast('Kamera terputus — aktivitas ini tercatat');
+  function laporMencurigakan(tipe: 'tab' | 'resize' | 'fullscreen' | 'kamera') {
     const { nomor: n, token: t } = credRef.current;
     if (!n || !t) return;
     fetch('/api/kuis/mencurigakan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nomor: n, token: t }),
+      body: JSON.stringify({ nomor: n, token: t, tipe }),
     }).catch(() => {});
+  }
+
+  function laporKameraTerputus() {
+    const now = Date.now();
+    if (now - lapoKameraRef.current < 3000) return;
+    lapoKameraRef.current = now;
+    tampilkanToast('Kamera terputus — aktivitas ini tercatat');
+    laporMencurigakan('kamera');
   }
 
   // Minta izin kamera untuk verifikasi wajah. Wajib — kuis tidak bisa dimulai
@@ -410,12 +416,7 @@ export default function KuisMqkClient() {
         if (now - lapoRef.current < 3000) return;
         lapoRef.current = now;
         pendingWarnRef.current = true;
-        const { nomor: n, token: t } = credRef.current;
-        fetch('/api/kuis/mencurigakan', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nomor: n, token: t }),
-        }).catch(() => {});
+        laporMencurigakan('tab');
       } else if (pendingWarnRef.current) {
         pendingWarnRef.current = false;
         tampilkanToast('Anda berpindah tab — aktivitas ini tercatat');
@@ -438,16 +439,53 @@ export default function KuisMqkClient() {
       if (now - lapoResizeRef.current < 3000) return;
       lapoResizeRef.current = now;
       tampilkanToast('Aktivitas mencurigakan terdeteksi — tercatat');
-      const { nomor: n, token: t } = credRef.current;
-      fetch('/api/kuis/mencurigakan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nomor: n, token: t }),
-      }).catch(() => {});
+      laporMencurigakan('resize');
     }
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
+  // Minta mode layar penuh agar peserta tidak mudah membuka jendela/aplikasi
+  // lain berdampingan (mis. mesin pencari atau AI chat). Dipanggil sinkron di
+  // dalam gesture klik "Mulai Kuis" — beberapa peramban (Safari) menolak
+  // requestFullscreen bila dipanggil setelah await, jadi jangan pindahkan ini
+  // ke dalam fungsi async mulai().
+  function mintaFullscreen() {
+    try {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+    } catch {
+      // Fullscreen API tidak wajib — kuis tetap bisa dikerjakan tanpanya.
+    }
+  }
+
+  // Lapor bila peserta keluar dari mode layar penuh saat kuis berlangsung.
+  // Tidak dipaksa/diblokir (Esc selalu bisa keluar dari fullscreen di semua
+  // peramban) — tapi diberi tombol untuk kembali, dan aktivitasnya tercatat
+  // secara terbuka seperti indikator lainnya.
+  useEffect(() => {
+    if (step !== 'sedang') return;
+    function onFullscreenChange() {
+      const aktif = Boolean(document.fullscreenElement);
+      setFullscreenAktif(aktif);
+      if (aktif) return;
+      const now = Date.now();
+      if (now - lapoFullscreenRef.current < 3000) return;
+      lapoFullscreenRef.current = now;
+      tampilkanToast('Anda keluar dari mode layar penuh — aktivitas ini tercatat');
+      laporMencurigakan('fullscreen');
+    }
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    setFullscreenAktif(Boolean(document.fullscreenElement));
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
+  // Lepaskan fullscreen begitu kuis selesai.
+  useEffect(() => {
+    if (step === 'selesai' && document.fullscreenElement) {
+      document.exitFullscreen?.().catch(() => {});
+    }
   }, [step]);
 
   // Peringatkan sebelum menutup/memuat ulang halaman saat kuis berlangsung,
@@ -501,15 +539,17 @@ export default function KuisMqkClient() {
             50 soal nahwu, fikih, dan sharaf dari Kitab Fathul-Mu&rsquo;in Bab Ubudiyah. Waktu 15 detik
             per soal, tidak bisa kembali ke soal sebelumnya, dan kuis hanya dapat dikerjakan satu kali.
             Pastikan koneksi internet stabil sebelum memulai — jangan tutup atau muat ulang halaman
-            selama kuis berlangsung. Sistem memantau berbagai aktivitas selama kuis berlangsung;
-            tindakan yang dianggap mencurigakan akan tercatat dan dapat memengaruhi kelulusan Anda.
+            selama kuis berlangsung. Kuis akan berjalan dalam mode layar penuh. Sistem memantau
+            berbagai aktivitas selama kuis berlangsung (berpindah tab, membuka panel/DevTools, keluar
+            dari layar penuh, kamera terputus); tindakan yang dianggap mencurigakan akan tercatat dan
+            dapat memengaruhi kelulusan Anda.
           </p>
           <p style={{ fontSize: 14, lineHeight: 1.6, color: '#4b4740', margin: '0 0 32px', background: 'var(--paper2)', borderRadius: 3, padding: '14px 16px' }}>
             Kuis ini memerlukan akses kamera untuk verifikasi wajah selama kuis berlangsung, guna
             memastikan peserta yang mengerjakan adalah Anda sendiri (bukan joki). Pastikan kamera
             tetap aktif dan wajah Anda terlihat jelas sepanjang kuis.
           </p>
-          <form onSubmit={(e) => { e.preventDefault(); mulai(); }} style={{ display: 'grid', gap: 16 }}>
+          <form onSubmit={(e) => { e.preventDefault(); mintaFullscreen(); mulai(); }} style={{ display: 'grid', gap: 16 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <label htmlFor="nomor" style={labelStyle}>Nomor pendaftaran</label>
               <input id="nomor" value={nomor} onChange={(e) => setNomor(e.target.value)} placeholder="MS290-MQK-????" style={inputStyle} required />
@@ -549,6 +589,19 @@ export default function KuisMqkClient() {
           <span style={{ position: 'absolute', top: 4, left: 6, fontSize: 9, fontWeight: 700, color: '#fff', letterSpacing: '0.08em', textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>
             ● KAMERA AKTIF
           </span>
+        </div>
+      ) : null}
+
+      {step === 'sedang' && !fullscreenAktif ? (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, background: '#f4dede', borderLeft: '3px solid #a94442', borderRadius: 2, padding: '12px 16px', marginBottom: 20 }}>
+          <span style={{ fontSize: 13, color: '#7a2f2d' }}>Anda tidak dalam mode layar penuh — aktivitas ini tercatat.</span>
+          <button
+            type="button"
+            onClick={mintaFullscreen}
+            style={{ flexShrink: 0, height: 32, padding: '0 14px', background: '#a94442', color: '#fff', border: 0, borderRadius: 2, fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
+          >
+            Layar Penuh
+          </button>
         </div>
       ) : null}
 

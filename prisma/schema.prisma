@@ -129,4 +129,16 @@ model KuisAttempt {
   updatedAt          DateTime  @updatedAt
 
   pendaftar          Pendaftar @relation(fields: [pendaftarId], references: [id])
+  aktivitas          KuisAktivitas[]
+}
+
+model KuisAktivitas {
+  id        String      @id @default(cuid())
+  attemptId String
+  tipe      String
+  createdAt DateTime    @default(now())
+
+  attempt   KuisAttempt @relation(fields: [attemptId], references: [id])
+
+  @@index([attemptId])
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 type Soal = {
   id: string;
@@ -24,6 +24,7 @@ type Attempt = {
   soalSaatIni: number;
   totalSoal: number;
   jumlahMencurigakan: number;
+  rincianMencurigakan: string[];
   fotoAwal: boolean;
   fotoAkhir: boolean;
   mulaiAt: string | null;
@@ -79,6 +80,30 @@ export default function SoalKuisManager({
   const timerHapusMassalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [konfirmasiHapusId, setKonfirmasiHapusId] = useState('');
   const timerHapusRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [tampilBankSoal, setTampilBankSoal] = useState(true);
+
+  // Baca preferensi tersimpan setelah mount (bukan di initializer useState) agar render
+  // pertama di klien tetap sama dengan HTML dari server — localStorage tidak tersedia
+  // saat SSR, jadi membacanya di initializer akan memicu hydration mismatch.
+  useEffect(() => {
+    try {
+      setTampilBankSoal(window.localStorage.getItem('admin-kuis-bank-soal-terbuka') !== '0');
+    } catch {
+      // localStorage tidak tersedia — biarkan tetap terbuka (default).
+    }
+  }, []);
+
+  function toggleTampilBankSoal() {
+    setTampilBankSoal((v) => {
+      const next = !v;
+      try {
+        window.localStorage.setItem('admin-kuis-bank-soal-terbuka', next ? '1' : '0');
+      } catch {
+        // localStorage tidak tersedia — cukup abaikan, tidak mempengaruhi fungsi utama.
+      }
+      return next;
+    });
+  }
 
   function tampilkanPesan(t: string) {
     setMsg(t);
@@ -339,25 +364,45 @@ export default function SoalKuisManager({
       <div style={cardStyle}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
           <h3 style={{ fontFamily: 'var(--disp)', fontWeight: 400, fontSize: 17, margin: 0 }}>Bank soal ({soal.length})</h3>
-          <button
-            type="button"
-            onClick={hapusTerpilih}
-            disabled={terpilih.size === 0 || busy}
-            style={{
-              height: 34,
-              padding: '0 14px',
-              fontSize: 12.5,
-              fontWeight: 600,
-              background: terpilih.size === 0 ? 'transparent' : konfirmasiHapusMassal ? '#a94442' : 'transparent',
-              color: terpilih.size === 0 ? 'var(--grey)' : konfirmasiHapusMassal ? '#fff' : '#a94442',
-              border: `1px solid ${terpilih.size === 0 ? 'rgba(36,33,28,0.2)' : '#a94442'}`,
-              borderRadius: 2,
-              cursor: terpilih.size === 0 ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {konfirmasiHapusMassal ? `Yakin hapus ${terpilih.size} soal? Klik lagi` : `Hapus Terpilih (${terpilih.size})`}
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              type="button"
+              onClick={hapusTerpilih}
+              disabled={terpilih.size === 0 || busy}
+              style={{
+                height: 34,
+                padding: '0 14px',
+                fontSize: 12.5,
+                fontWeight: 600,
+                background: terpilih.size === 0 ? 'transparent' : konfirmasiHapusMassal ? '#a94442' : 'transparent',
+                color: terpilih.size === 0 ? 'var(--grey)' : konfirmasiHapusMassal ? '#fff' : '#a94442',
+                border: `1px solid ${terpilih.size === 0 ? 'rgba(36,33,28,0.2)' : '#a94442'}`,
+                borderRadius: 2,
+                cursor: terpilih.size === 0 ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {konfirmasiHapusMassal ? `Yakin hapus ${terpilih.size} soal? Klik lagi` : `Hapus Terpilih (${terpilih.size})`}
+            </button>
+            <button
+              type="button"
+              onClick={toggleTampilBankSoal}
+              style={{
+                height: 34,
+                padding: '0 14px',
+                fontSize: 12.5,
+                fontWeight: 600,
+                background: 'transparent',
+                color: 'var(--ink)',
+                border: '1px solid rgba(36,33,28,0.2)',
+                borderRadius: 2,
+                cursor: 'pointer',
+              }}
+            >
+              {tampilBankSoal ? 'Sembunyikan' : 'Tampilkan'}
+            </button>
+          </div>
         </div>
+        {tampilBankSoal ? (
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
             <thead>
@@ -418,6 +463,7 @@ export default function SoalKuisManager({
             </tbody>
           </table>
         </div>
+        ) : null}
       </div>
 
       {/* Monitoring peserta */}
@@ -446,7 +492,12 @@ export default function SoalKuisManager({
                   <td style={{ padding: '10px', borderBottom: '1px solid var(--line)', fontSize: 12.5 }}>{a.soalSaatIni}/{a.totalSoal}</td>
                   <td style={{ padding: '10px', borderBottom: '1px solid var(--line)', fontSize: 13, fontWeight: 700 }}>{a.skor ?? '–'}</td>
                   <td style={{ padding: '10px', borderBottom: '1px solid var(--line)', fontSize: 12.5, color: a.jumlahMencurigakan > 0 ? '#a94442' : 'inherit' }}>
-                    {a.jumlahMencurigakan}
+                    <div style={{ fontWeight: 700 }}>{a.jumlahMencurigakan}</div>
+                    {a.rincianMencurigakan.length > 0 ? (
+                      <div style={{ fontSize: 11, color: '#8a6a68', marginTop: 2 }}>
+                        {a.rincianMencurigakan.join(' · ')}
+                      </div>
+                    ) : null}
                   </td>
                   <td style={{ padding: '10px', borderBottom: '1px solid var(--line)', fontSize: 12, whiteSpace: 'nowrap' }}>
                     {a.fotoAwal ? (

@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { LABEL_AKTIVITAS_MENCURIGAKAN, type TipeAktivitasMencurigakan } from '@/lib/kuis';
 import SoalKuisManager from './SoalKuisManager';
 
 export const dynamic = 'force-dynamic';
@@ -15,6 +16,21 @@ export default async function AdminKuisPage() {
   ]);
 
   const totalPeserta = await prisma.pendaftar.count({ where: { cabangId: 'mqk', status: 'TERVERIFIKASI' } });
+
+  const rincianPerAttempt = new Map<string, string[]>();
+  if (attempts.length > 0) {
+    const rincian = await prisma.kuisAktivitas.groupBy({
+      by: ['attemptId', 'tipe'],
+      where: { attemptId: { in: attempts.map((a) => a.id) } },
+      _count: { _all: true },
+    });
+    for (const r of rincian) {
+      const label = LABEL_AKTIVITAS_MENCURIGAKAN[r.tipe as TipeAktivitasMencurigakan] || r.tipe;
+      const list = rincianPerAttempt.get(r.attemptId) || [];
+      list.push(`${label} ×${r._count._all}`);
+      rincianPerAttempt.set(r.attemptId, list);
+    }
+  }
 
   const ringkasan = {
     belumMulai: totalPeserta - attempts.length,
@@ -52,6 +68,7 @@ export default async function AdminKuisPage() {
           soalSaatIni: a.soalSaatIni,
           totalSoal: (a.soalOrder as string[]).length,
           jumlahMencurigakan: a.jumlahMencurigakan,
+          rincianMencurigakan: rincianPerAttempt.get(a.id) || [],
           fotoAwal: Boolean(a.fotoAwal),
           fotoAkhir: Boolean(a.fotoAkhir),
           mulaiAt: a.mulaiAt ? a.mulaiAt.toISOString() : null,

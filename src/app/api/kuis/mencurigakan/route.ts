@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rateLimit, ipFromRequest } from '@/lib/rate-limit';
-import { verifikasiPeserta } from '@/lib/kuis';
+import { verifikasiPeserta, TIPE_AKTIVITAS_MENCURIGAKAN, type TipeAktivitasMencurigakan } from '@/lib/kuis';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -16,6 +16,10 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const nomor = String(body.nomor || '').trim().toUpperCase();
   const token = String(body.token || '').trim();
+  const tipeMentah = String(body.tipe || '');
+  const tipe: TipeAktivitasMencurigakan = (TIPE_AKTIVITAS_MENCURIGAKAN as readonly string[]).includes(tipeMentah)
+    ? (tipeMentah as TipeAktivitasMencurigakan)
+    : 'lain';
 
   const pendaftar = await verifikasiPeserta(nomor, token);
   if (!pendaftar) {
@@ -27,10 +31,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  await prisma.kuisAttempt.update({
-    where: { id: attempt.id },
-    data: { jumlahMencurigakan: { increment: 1 } },
-  });
+  await prisma.$transaction([
+    prisma.kuisAttempt.update({
+      where: { id: attempt.id },
+      data: { jumlahMencurigakan: { increment: 1 } },
+    }),
+    prisma.kuisAktivitas.create({
+      data: { attemptId: attempt.id, tipe },
+    }),
+  ]);
 
   return NextResponse.json({ ok: true });
 }

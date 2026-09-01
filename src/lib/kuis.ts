@@ -4,6 +4,16 @@ import type { Pendaftar, KuisAttempt, SoalKuis } from '@prisma/client';
 export const DETIK_PER_SOAL = 15;
 const GRACE_MS = 2000;
 
+export const TIPE_AKTIVITAS_MENCURIGAKAN = ['tab', 'resize', 'fullscreen', 'kamera', 'lain'] as const;
+export type TipeAktivitasMencurigakan = (typeof TIPE_AKTIVITAS_MENCURIGAKAN)[number];
+export const LABEL_AKTIVITAS_MENCURIGAKAN: Record<TipeAktivitasMencurigakan, string> = {
+  tab: 'Berpindah tab',
+  resize: 'Jendela menyempit (mis. panel/DevTools)',
+  fullscreen: 'Keluar dari layar penuh',
+  kamera: 'Kamera terputus',
+  lain: 'Aktivitas lain',
+};
+
 export async function verifikasiPeserta(nomor: string, token: string): Promise<Pendaftar | null> {
   const pendaftar = await prisma.pendaftar.findUnique({ where: { nomorPendaftaran: nomor } });
   if (!pendaftar || pendaftar.tokenCek !== token || pendaftar.cabangId !== 'mqk') return null;
