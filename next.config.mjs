@@ -32,7 +32,9 @@ const nextConfig = {
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+          // Kamera diizinkan untuk same-origin (dipakai fitur verifikasi wajah kuis MQK di
+          // /kuis-mqk); mikrofon & geolokasi tetap diblokir karena tidak dipakai sama sekali.
+          { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=()' },
           { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
           { key: 'Content-Security-Policy', value: CSP },
         ],

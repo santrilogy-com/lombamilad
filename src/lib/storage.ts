@@ -31,6 +31,9 @@ const ALLOWED_TYPES: Record<string, string[]> = {
     'image/webp',
     'video/mp4',
   ],
+  // Foto verifikasi kuis: selalu berasal dari <canvas>.toBlob() di klien, bukan
+  // unggahan bebas — cukup batasi ke format gambar umum.
+  'kuis-verifikasi': ['image/jpeg', 'image/png', 'image/webp'],
 };
 
 // file.type datang dari klien (Content-Type yang dilaporkan browser) dan bisa
@@ -83,7 +86,7 @@ function r2Bucket() {
 
 export async function saveFile(
   file: File,
-  kind: 'identitas' | 'submisi',
+  kind: 'identitas' | 'submisi' | 'kuis-verifikasi',
   subdir: string
 ): Promise<SavedFile> {
   const allowed = ALLOWED_TYPES[kind] || [];

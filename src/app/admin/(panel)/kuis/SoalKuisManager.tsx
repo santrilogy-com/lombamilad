@@ -24,6 +24,8 @@ type Attempt = {
   soalSaatIni: number;
   totalSoal: number;
   jumlahMencurigakan: number;
+  fotoAwal: boolean;
+  fotoAkhir: boolean;
   mulaiAt: string | null;
   selesaiAt: string | null;
 };
@@ -430,6 +432,7 @@ export default function SoalKuisManager({
                 <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Progres</th>
                 <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Skor</th>
                 <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Mencurigakan</th>
+                <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Foto</th>
               </tr>
             </thead>
             <tbody>
@@ -445,11 +448,28 @@ export default function SoalKuisManager({
                   <td style={{ padding: '10px', borderBottom: '1px solid var(--line)', fontSize: 12.5, color: a.jumlahMencurigakan > 0 ? '#a94442' : 'inherit' }}>
                     {a.jumlahMencurigakan}
                   </td>
+                  <td style={{ padding: '10px', borderBottom: '1px solid var(--line)', fontSize: 12, whiteSpace: 'nowrap' }}>
+                    {a.fotoAwal ? (
+                      <a href={`/api/berkas?id=${encodeURIComponent(a.id)}&jenis=kuis-awal`} target="_blank" rel="noopener noreferrer" style={{ fontWeight: 600 }}>
+                        Awal ↗
+                      </a>
+                    ) : (
+                      <span style={{ color: 'var(--grey)' }}>Awal –</span>
+                    )}
+                    {' · '}
+                    {a.fotoAkhir ? (
+                      <a href={`/api/berkas?id=${encodeURIComponent(a.id)}&jenis=kuis-akhir`} target="_blank" rel="noopener noreferrer" style={{ fontWeight: 600 }}>
+                        Akhir ↗
+                      </a>
+                    ) : (
+                      <span style={{ color: 'var(--grey)' }}>Akhir –</span>
+                    )}
+                  </td>
                 </tr>
               ))}
               {attempts.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ padding: '16px 10px', fontSize: 13, color: '#5a554c' }}>Belum ada peserta yang memulai kuis.</td>
+                  <td colSpan={6} style={{ padding: '16px 10px', fontSize: 13, color: '#5a554c' }}>Belum ada peserta yang memulai kuis.</td>
                 </tr>
               ) : null}
             </tbody>

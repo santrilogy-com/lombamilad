@@ -111,5 +111,6 @@ async function buildRespon(attempt: KuisAttempt) {
     total: soalOrder.length,
     sisaDetik: sisaWaktuDetik(attempt.batasWaktuSoal),
     jumlahMencurigakan: attempt.jumlahMencurigakan,
+    fotoAwalSudahAda: Boolean(attempt.fotoAwal),
   });
 }

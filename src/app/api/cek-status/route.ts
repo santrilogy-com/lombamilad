@@ -59,6 +59,7 @@ export async function GET(req: Request) {
     asalLembaga: p.asalLembaga,
     whatsapp: p.whatsapp,
     tanggalDaftar: p.createdAt,
+    updatedAt: p.updatedAt,
     status: labelStatus[p.status] || p.status,
     statusKode: p.status,
     nilaiPenyisihan: p.nilai?.nilaiPenyisihan ?? null,

@@ -28,12 +28,20 @@ export async function GET(req: Request) {
     // supaya admin tidak bisa dipaksa membaca file arbitrer di server (mis. .env).
     const id = url.searchParams.get('id');
     const jenis = url.searchParams.get('jenis');
-    if (!id || (jenis !== 'identitas' && jenis !== 'submisi')) {
+    const JENIS_VALID = ['identitas', 'submisi', 'kuis-awal', 'kuis-akhir'];
+    if (!id || !jenis || !JENIS_VALID.includes(jenis)) {
       return new NextResponse('Bad request', { status: 400 });
     }
-    const found = await prisma.pendaftar.findUnique({ where: { id } });
-    if (!found) return new NextResponse('Not found', { status: 404 });
-    rel = (jenis === 'identitas' ? found.fileIdentitas : found.fileSubmisi) || '';
+    if (jenis === 'kuis-awal' || jenis === 'kuis-akhir') {
+      // Untuk jenis ini, id adalah id KuisAttempt (bukan Pendaftar).
+      const attempt = await prisma.kuisAttempt.findUnique({ where: { id } });
+      if (!attempt) return new NextResponse('Not found', { status: 404 });
+      rel = (jenis === 'kuis-awal' ? attempt.fotoAwal : attempt.fotoAkhir) || '';
+    } else {
+      const found = await prisma.pendaftar.findUnique({ where: { id } });
+      if (!found) return new NextResponse('Not found', { status: 404 });
+      rel = (jenis === 'identitas' ? found.fileIdentitas : found.fileSubmisi) || '';
+    }
   } else {
     if (!nomor || !token) return new NextResponse('Unauthorized', { status: 401 });
     const found = await prisma.pendaftar.findUnique({

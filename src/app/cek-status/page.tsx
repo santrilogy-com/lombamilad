@@ -27,6 +27,7 @@ type StatusResult = {
   asalLembaga: string;
   whatsapp: string;
   tanggalDaftar: string;
+  updatedAt: string;
   status: string;
   statusKode: string;
   nilaiPenyisihan: number | null;
@@ -50,6 +51,14 @@ const STATUS_STYLE: Record<string, { label: string; bg: string; color: string }>
   JUARA_1: { label: 'Juara 1', bg: 'var(--olive-p)', color: '#675c37' },
   JUARA_2: { label: 'Juara 2', bg: 'var(--olive-p)', color: '#675c37' },
   JUARA_3: { label: 'Juara 3', bg: 'var(--olive-p)', color: '#675c37' },
+};
+
+const ALUR_UTAMA = ['MENUNGGU_VERIFIKASI', 'TERVERIFIKASI', 'LOLOS_PENYISIHAN', 'LOLOS_FINAL'] as const;
+const LABEL_TAHAP: Record<string, string> = {
+  MENUNGGU_VERIFIKASI: 'Menunggu Verifikasi',
+  TERVERIFIKASI: 'Terverifikasi',
+  LOLOS_PENYISIHAN: 'Lolos Penyisihan',
+  LOLOS_FINAL: 'Lolos Final',
 };
 
 const SESI_KEY = 'ms290_peserta';
@@ -156,11 +165,12 @@ function CekStatusForm() {
         Dashboard Peserta
       </div>
       <h1 style={{ fontFamily: 'var(--disp)', fontWeight: 300, fontSize: 'clamp(32px, 4vw, 52px)', letterSpacing: '-0.045em', margin: '16px 0 10px' }}>
-        {result ? 'Selamat Datang' : 'Masuk ke Dashboard'}
+        {result ? `Selamat Datang, ${result.nama.split(' ')[0]}` : 'Masuk ke Dashboard'}
       </h1>
       <p style={{ fontSize: 15, lineHeight: 1.6, color: '#4b4740', margin: '0 0 32px' }}>
-        Masukkan nomor pendaftaran dan token yang Anda terima saat mendaftar (tertera pada email /
-        halaman sukses pendaftaran).
+        {result
+          ? 'Berikut ringkasan pendaftaran dan progres Anda di Lomba Nasional Milad Sidogiri 290.'
+          : 'Masukkan nomor pendaftaran dan token yang Anda terima saat mendaftar (tertera pada email / halaman sukses pendaftaran).'}
       </p>
 
       {!result ? (
@@ -217,6 +227,11 @@ function CekStatusForm() {
                   Keluar
                 </button>
               </div>
+            </div>
+
+            <StatusStepper statusKode={result.statusKode} />
+            <div style={{ fontSize: 12, color: 'var(--grey)', marginBottom: 20 }}>
+              Diperbarui {new Date(result.updatedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 18 }}>
@@ -297,6 +312,90 @@ function CekStatusForm() {
   );
 }
 
+// Alur linear MENUNGGU_VERIFIKASI -> TERVERIFIKASI -> LOLOS_PENYISIHAN -> LOLOS_FINAL,
+// diturunkan murni dari statusKode. DITOLAK/GUGUR_PENYISIHAN adalah jalan buntu (bukan
+// bagian dari alur utama) sehingga ditampilkan sebagai penanda berhenti, bukan dipaksa
+// masuk salah satu tahap. JUARA_1/2/3 dianggap tahap "Lolos Final" yang selesai penuh.
+function StatusStepper({ statusKode }: { statusKode: string }) {
+  const juara = statusKode === 'JUARA_1' || statusKode === 'JUARA_2' || statusKode === 'JUARA_3';
+  const ditolak = statusKode === 'DITOLAK';
+  const gugur = statusKode === 'GUGUR_PENYISIHAN';
+  const efektif = juara ? 'LOLOS_FINAL' : statusKode;
+  const deadEndIndex = ditolak ? 1 : gugur ? 2 : -1;
+  const deadEndLabel = ditolak ? 'Ditolak' : 'Tidak Lolos Penyisihan';
+  const deadEndColor = ditolak ? '#a94442' : '#8a8a80';
+  const idxAktif = ALUR_UTAMA.indexOf(efektif as (typeof ALUR_UTAMA)[number]);
+  const currentIndex = deadEndIndex >= 0 ? deadEndIndex : Math.max(0, idxAktif);
+
+  const state: Array<'done' | 'active' | 'dead' | 'pending'> = ALUR_UTAMA.map((_, i) => {
+    if (deadEndIndex >= 0) {
+      if (i < deadEndIndex) return 'done';
+      if (i === deadEndIndex) return 'dead';
+      return 'pending';
+    }
+    if (i < currentIndex) return 'done';
+    if (i === currentIndex) return juara && i === ALUR_UTAMA.length - 1 ? 'done' : 'active';
+    return 'pending';
+  });
+
+  const warna = (s: string) => (s === 'dead' ? deadEndColor : s === 'pending' ? 'rgba(36,33,28,0.2)' : 'var(--olive)');
+  const gridCols = ALUR_UTAMA.map((_, i) => (i === 0 ? '12px' : '1fr 12px')).join(' ');
+
+  return (
+    <div style={{ margin: '2px 0 12px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: gridCols, alignItems: 'center' }}>
+        {ALUR_UTAMA.flatMap((tahap, i) => {
+          const s = state[i];
+          const dot = (
+            <div
+              key={`dot-${tahap}`}
+              style={{
+                width: 11,
+                height: 11,
+                borderRadius: '50%',
+                justifySelf: i === 0 ? 'start' : i === ALUR_UTAMA.length - 1 ? 'end' : 'center',
+                background: s === 'pending' ? 'var(--paper)' : warna(s),
+                border: `2px solid ${warna(s)}`,
+              }}
+            />
+          );
+          if (i === 0) return [dot];
+          const line = (
+            <div
+              key={`line-${tahap}`}
+              style={{ height: 2, background: state[i - 1] === 'done' ? 'var(--olive)' : 'rgba(36,33,28,0.2)' }}
+            />
+          );
+          return [line, dot];
+        })}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${ALUR_UTAMA.length}, 1fr)`, marginTop: 7 }}>
+        {ALUR_UTAMA.map((tahap, i) => {
+          const s = state[i];
+          const label = s === 'dead' ? deadEndLabel : LABEL_TAHAP[tahap];
+          return (
+            <div
+              key={tahap}
+              style={{
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+                color: s === 'dead' ? deadEndColor : s === 'pending' ? 'var(--grey)' : 'var(--ink)',
+                textAlign: i === 0 ? 'left' : i === ALUR_UTAMA.length - 1 ? 'right' : 'center',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {label}
+              {juara && s === 'done' && i === ALUR_UTAMA.length - 1 ? ' 🏆' : ''}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function KuisCard({ nomor, token, kuis, status }: { nomor: string; token: string; kuis: KuisInfo; status: string }) {
   const href = `/kuis-mqk?${new URLSearchParams({ nomor, token })}`;
 
@@ -328,6 +427,8 @@ function KuisCard({ nomor, token, kuis, status }: { nomor: string; token: string
         <>
           <p style={{ fontSize: 14, color: '#4b4740', margin: '10px 0 16px' }}>
             50 soal, 15 detik per soal, hanya bisa dikerjakan satu kali. Pastikan siap sebelum memulai.
+            Kuis ini memerlukan akses kamera untuk verifikasi wajah — siapkan perangkat dengan kamera
+            sebelum memulai.
           </p>
           <Link href={href} style={{ display: 'inline-flex', alignItems: 'center', height: 46, padding: '0 22px', background: 'var(--ink)', color: 'var(--paper)', fontSize: 13.5, fontWeight: 600, borderRadius: 2 }}>
             Mulai Kuis Babak I →

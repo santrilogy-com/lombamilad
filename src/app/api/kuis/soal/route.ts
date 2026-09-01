@@ -55,5 +55,6 @@ export async function GET(req: Request) {
     total: soalOrder.length,
     sisaDetik: sisaWaktuDetik(attempt.batasWaktuSoal),
     jumlahMencurigakan: attempt.jumlahMencurigakan,
+    fotoAwalSudahAda: Boolean(attempt.fotoAwal),
   });
 }

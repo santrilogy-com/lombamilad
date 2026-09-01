@@ -52,6 +52,8 @@ export default async function AdminKuisPage() {
           soalSaatIni: a.soalSaatIni,
           totalSoal: (a.soalOrder as string[]).length,
           jumlahMencurigakan: a.jumlahMencurigakan,
+          fotoAwal: Boolean(a.fotoAwal),
+          fotoAkhir: Boolean(a.fotoAkhir),
           mulaiAt: a.mulaiAt ? a.mulaiAt.toISOString() : null,
           selesaiAt: a.selesaiAt ? a.selesaiAt.toISOString() : null,
         }))}

@@ -22,6 +22,7 @@ type SoalResponse =
       total: number;
       sisaDetik: number;
       jumlahMencurigakan: number;
+      fotoAwalSudahAda: boolean;
     }
   | { selesai: true; skor: number | null; benar: number; total: number };
 
@@ -59,16 +60,168 @@ export default function KuisMqkClient() {
   const [sisaDetik, setSisaDetik] = useState(0);
   const [hasil, setHasil] = useState<{ skor: number | null; benar: number; total: number } | null>(null);
   const [toast, setToast] = useState('');
+  const [perluFotoAwal, setPerluFotoAwal] = useState(false);
 
   const credRef = useRef({ nomor: '', token: '' });
   const lapoRef = useRef(0);
   const pendingWarnRef = useRef(false);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const streamRef = useRef<MediaStream | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const fotoAwalKirimRef = useRef(false);
+  const fotoAkhirKirimRef = useRef(false);
+  const lapoKameraRef = useRef(0);
+
   function tampilkanToast(pesan: string) {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast(pesan);
     toastTimerRef.current = setTimeout(() => setToast(''), 1800);
+  }
+
+  function laporKameraTerputus() {
+    const now = Date.now();
+    if (now - lapoKameraRef.current < 3000) return;
+    lapoKameraRef.current = now;
+    tampilkanToast('Kamera terputus — aktivitas ini tercatat');
+    const { nomor: n, token: t } = credRef.current;
+    if (!n || !t) return;
+    fetch('/api/kuis/mencurigakan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nomor: n, token: t }),
+    }).catch(() => {});
+  }
+
+  // Minta izin kamera untuk verifikasi wajah. Wajib — kuis tidak bisa dimulai
+  // tanpa akses kamera, agar dua foto verifikasi (awal & menjelang selesai)
+  // bisa diambil untuk mencegah joki.
+  async function mintaKamera(): Promise<boolean> {
+    if (streamRef.current && streamRef.current.getVideoTracks().some((t) => t.readyState === 'live')) {
+      return true;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: false,
+      });
+      streamRef.current = stream;
+      stream.getVideoTracks().forEach((track) => {
+        track.onended = () => laporKameraTerputus();
+      });
+      return true;
+    } catch {
+      setError('Akses kamera diperlukan untuk memulai kuis ini (verifikasi wajah). Izinkan akses kamera pada peramban Anda, lalu coba lagi.');
+      return false;
+    }
+  }
+
+  function hentikanKamera() {
+    streamRef.current?.getTracks().forEach((t) => {
+      t.onended = null;
+      t.stop();
+    });
+    streamRef.current = null;
+  }
+
+  // Sampel kasar untuk mendeteksi frame yang polos gelap (mis. video belum sempat
+  // benar-benar merender saat digambar ke canvas) — dipakai untuk retry di tangkapFoto.
+  function frameGelap(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement): boolean {
+    const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const totalPiksel = data.length / 4;
+    const langkah = Math.max(1, Math.floor(totalPiksel / 2000)) * 4;
+    let total = 0;
+    let n = 0;
+    for (let i = 0; i < data.length; i += langkah) {
+      total += data[i] + data[i + 1] + data[i + 2];
+      n++;
+    }
+    return n > 0 && total / n < 6;
+  }
+
+  // Beberapa kali percobaan menggambar frame video ke canvas — video kadang belum
+  // sempat benar-benar merender frame pertama saat pertama digambar, hasilnya polos
+  // hitam. Ulangi singkat sebelum menyerah, supaya foto verifikasi tidak sia-sia.
+  function tangkapFoto(): Promise<Blob | null> {
+    return new Promise((resolve) => {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      if (!video || !canvas || !video.videoWidth) {
+        resolve(null);
+        return;
+      }
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve(null);
+        return;
+      }
+
+      let percobaan = 0;
+      const gambar = () => {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        percobaan++;
+        if (frameGelap(ctx, canvas) && percobaan < 5) {
+          setTimeout(gambar, 200);
+          return;
+        }
+        canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.85);
+      };
+      gambar();
+    });
+  }
+
+  async function kirimFoto(tipe: 'awal' | 'akhir') {
+    const blob = await tangkapFoto();
+    if (!blob) return;
+    const { nomor: n, token: t } = credRef.current;
+    if (!n || !t) return;
+    const fd = new FormData();
+    fd.append('nomor', n);
+    fd.append('token', t);
+    fd.append('tipe', tipe);
+    fd.append('foto', blob, `${tipe}.jpg`);
+    try {
+      await fetch('/api/kuis/foto', { method: 'POST', body: fd });
+    } catch {
+      // Kegagalan kirim foto tidak menghentikan kuis — jangan blokir peserta karena ini.
+    }
+  }
+
+  // Tunggu video benar-benar sudah menggambar frame (bukan cuma metadata siap)
+  // sebelum menangkap foto — mencegah foto verifikasi awal terekam hitam polos
+  // karena diambil sebelum frame pertama sempat dirender ke elemen video.
+  function tungguFrameVideo(): Promise<void> {
+    return new Promise((resolve) => {
+      const video = videoRef.current;
+      if (!video) {
+        resolve();
+        return;
+      }
+      let selesai = false;
+      const done = () => {
+        if (selesai) return;
+        selesai = true;
+        resolve();
+      };
+      if (typeof (video as any).requestVideoFrameCallback === 'function') {
+        (video as any).requestVideoFrameCallback(done);
+      } else {
+        const tunggu2Frame = () => requestAnimationFrame(() => requestAnimationFrame(done));
+        if (video.readyState >= 2 && video.videoWidth) {
+          tunggu2Frame();
+        } else {
+          const onLoaded = () => {
+            video.removeEventListener('loadeddata', onLoaded);
+            tunggu2Frame();
+          };
+          video.addEventListener('loadeddata', onLoaded);
+        }
+      }
+      setTimeout(done, 1500);
+    });
   }
 
   const muatSoal = useCallback(async () => {
@@ -94,6 +247,7 @@ export default function KuisMqkClient() {
         setNomorSoal(data.nomorSoal);
         setTotal(data.total);
         setSisaDetik(data.sisaDetik);
+        setPerluFotoAwal(!data.fotoAwalSudahAda);
         setStep('sedang');
       }
     } catch (err: any) {
@@ -121,10 +275,17 @@ export default function KuisMqkClient() {
         throw new Error('Tidak dapat memulai kuis. Periksa koneksi internet Anda dan coba lagi.');
       }
       if (!res.ok) throw new Error(data?.error || 'Tidak dapat memulai kuis.');
+      // Kamera hanya diminta bila kuis benar-benar akan dikerjakan (SEDANG) — peserta
+      // yang membuka kembali tautan kuis yang sudah selesai tidak perlu diminta izin kamera.
+      if (data?.status === 'SEDANG') {
+        const kameraOk = await mintaKamera();
+        if (!kameraOk) return;
+      }
       credRef.current = { nomor: n.trim().toUpperCase(), token: t.trim() };
       await muatSoal();
     } catch (err: any) {
       setError(err?.message || 'Terjadi kesalahan.');
+      hentikanKamera();
     } finally {
       setBusy(false);
     }
@@ -166,6 +327,7 @@ export default function KuisMqkClient() {
         setNomorSoal(data.nomorSoal);
         setTotal(data.total);
         setSisaDetik(data.sisaDetik);
+        setPerluFotoAwal(!data.fotoAwalSudahAda);
       }
     } catch (err: any) {
       setError(err?.message || 'Terjadi kesalahan.');
@@ -186,6 +348,56 @@ export default function KuisMqkClient() {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, sisaDetik, muatSoal]);
+
+  // Sambungkan preview kamera begitu elemen video (hanya ada saat step === 'sedang')
+  // terpasang. Atribut `autoPlay` saja kadang tidak cukup memicu playback saat srcObject
+  // dipasang lewat JS (video diam di paused=true walau readyState sudah siap) — panggil
+  // play() eksplisit supaya frame benar-benar mengalir sebelum foto ditangkap.
+  useEffect(() => {
+    if (step === 'sedang' && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [step]);
+
+  // Ambil & kirim foto verifikasi awal begitu kamera+video siap. Berlaku juga saat
+  // resume (mis. peserta reload sebelum foto awal sempat terkirim) karena dipicu
+  // oleh flag fotoAwalSudahAda dari server, bukan hanya sekali di awal sesi klien.
+  useEffect(() => {
+    if (step !== 'sedang' || !perluFotoAwal || fotoAwalKirimRef.current) return;
+    fotoAwalKirimRef.current = true;
+    (async () => {
+      const kameraOk = await mintaKamera();
+      if (!kameraOk) {
+        fotoAwalKirimRef.current = false;
+        return;
+      }
+      // srcObject sudah dipasang oleh efek preview di atas (jalan lebih dulu pada render
+      // yang sama) — jangan set ulang di sini, karena menimpa srcObject dengan stream yang
+      // sama bisa memicu ulang siklus decode video dan membuat frame pertama yang ditangkap
+      // kosong/hitam.
+      await tungguFrameVideo();
+      await kirimFoto('awal');
+      setPerluFotoAwal(false);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, perluFotoAwal]);
+
+  // Ambil & kirim foto verifikasi akhir saat soal terakhir tampil — jaga-jaga ada
+  // joki yang menggantikan peserta di tengah kuis.
+  useEffect(() => {
+    if (step === 'sedang' && total > 0 && nomorSoal === total && !fotoAkhirKirimRef.current) {
+      fotoAkhirKirimRef.current = true;
+      kirimFoto('akhir');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, nomorSoal, total]);
+
+  // Matikan kamera begitu kuis selesai atau komponen dilepas.
+  useEffect(() => {
+    if (step === 'selesai') hentikanKamera();
+  }, [step]);
+  useEffect(() => () => hentikanKamera(), []);
 
   // Lapor bila peserta pindah tab / minimize saat kuis berlangsung, dan beri
   // tahu peserta secara terbuka bahwa ini tercatat (bukan diam-diam).
@@ -267,6 +479,13 @@ export default function KuisMqkClient() {
             selama kuis berlangsung. Sistem mencatat bila Anda berpindah tab/aplikasi lain saat
             mengerjakan; hindari melakukannya agar tidak dianggap mencurigakan oleh panitia.
           </p>
+          <p style={{ fontSize: 14, lineHeight: 1.6, color: '#4b4740', margin: '0 0 32px', background: 'var(--paper2)', borderRadius: 3, padding: '14px 16px' }}>
+            Kuis ini memerlukan akses kamera untuk verifikasi wajah. Sistem mengambil <strong>satu foto
+            saat kuis dimulai</strong> dan <strong>satu foto menjelang kuis selesai</strong> untuk
+            memastikan peserta yang mengerjakan adalah Anda sendiri (bukan joki). Di antara keduanya,
+            kamera tetap menyala sebagai pengawasan namun tidak merekam video maupun mengambil foto
+            tambahan. Sistem juga mencatat bila kamera terputus saat kuis berlangsung.
+          </p>
           <form onSubmit={(e) => { e.preventDefault(); mulai(); }} style={{ display: 'grid', gap: 16 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <label htmlFor="nomor" style={labelStyle}>Nomor pendaftaran</label>
@@ -281,6 +500,33 @@ export default function KuisMqkClient() {
             </button>
           </form>
         </>
+      ) : null}
+
+      <canvas ref={canvasRef} style={{ display: 'none' }} />
+
+      {step === 'sedang' ? (
+        <div
+          role="status"
+          aria-label="Kamera pengawasan kuis aktif"
+          style={{
+            position: 'fixed',
+            bottom: 20,
+            right: 20,
+            width: 112,
+            height: 84,
+            borderRadius: 4,
+            overflow: 'hidden',
+            border: '2px solid var(--ink)',
+            boxShadow: '0 8px 24px rgba(36,33,28,0.3)',
+            zIndex: 150,
+            background: '#000',
+          }}
+        >
+          <video ref={videoRef} autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
+          <span style={{ position: 'absolute', top: 4, left: 6, fontSize: 9, fontWeight: 700, color: '#fff', letterSpacing: '0.08em', textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>
+            ● KAMERA AKTIF
+          </span>
+        </div>
       ) : null}
 
       {step === 'sedang' && soal ? (
