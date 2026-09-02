@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rateLimit, ipFromRequest } from '@/lib/rate-limit';
-import { DETIK_PER_SOAL } from '@/lib/kuis';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -19,7 +18,10 @@ function shuffle<T>(arr: T[]): T[] {
 
 export async function POST(req: Request) {
   const ip = ipFromRequest(req);
-  const rl = rateLimit(`kuis-mulai:${ip}`, 10, 60_000);
+  // Batas per-IP dilonggarkan (bukan per-peserta) karena banyak peserta bisa membuka
+  // kuis bersamaan dari WiFi/NAT yang sama (mis. satu madrasah) saat kuis baru dibuka —
+  // limit yang terlalu ketat bisa menjegal peserta sah, bukan cuma penyalahguna.
+  const rl = rateLimit(`kuis-mulai:${ip}`, 40, 60_000);
   if (!rl.ok) {
     return NextResponse.json({ error: 'Terlalu banyak percobaan. Coba lagi sesaat lagi.' }, { status: 429 });
   }
@@ -78,7 +80,12 @@ export async function POST(req: Request) {
         jawaban: {},
         soalSaatIni: 0,
         mulaiAt: now,
-        batasWaktuSoal: new Date(now.getTime() + DETIK_PER_SOAL * 1000),
+        // batasWaktuSoal sengaja TIDAK di-set di sini — klien masih akan meminta izin
+        // kamera setelah panggilan ini sukses, dan itu bisa makan beberapa detik (dialog
+        // izin browser). Kalau jatah waktu soal 1 mulai dihitung dari sini, peserta yang
+        // agak lama memberi izin kamera bisa kehabisan waktu sebelum sempat membaca soal
+        // pertama. ambilAttemptTerkini() di lib/kuis.ts baru mengisi batasWaktuSoal saat
+        // soal benar-benar diambil untuk ditampilkan (GET /api/kuis/soal).
       },
     });
   } catch (err: any) {

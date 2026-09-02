@@ -8,7 +8,11 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   const ip = ipFromRequest(req);
-  const rl = rateLimit(`kuis-mencurigakan:${ip}`, 20, 60_000);
+  // Batas per-IP dilonggarkan: beberapa peserta di WiFi/NAT yang sama bisa memicu laporan
+  // (pindah tab, keluar fullscreen) dalam menit yang sama, dan laporan yang kena limit
+  // hilang tanpa retry di klien (fire-and-forget) — limit ketat justru melemahkan data
+  // anti-cheat di skenario yang paling butuh diawasi.
+  const rl = rateLimit(`kuis-mencurigakan:${ip}`, 60, 60_000);
   if (!rl.ok) {
     return NextResponse.json({ ok: false }, { status: 429 });
   }

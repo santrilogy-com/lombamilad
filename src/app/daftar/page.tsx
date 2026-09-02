@@ -241,7 +241,7 @@ export default function DaftarPage() {
             </div>
             <div className="g-formulir-span2" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <label htmlFor="asalLembaga" style={labelStyle}>Asal pesantren / lembaga pendidikan</label>
-              <input id="asalLembaga" name="asalLembaga" type="text" placeholder="Nama lembaga (mandiri: isi '-')" style={inputStyle()} />
+              <input id="asalLembaga" name="asalLembaga" type="text" required placeholder="Nama lembaga (mandiri: isi '-')" style={inputStyle()} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <label htmlFor="whatsapp" style={labelStyle}>Nomor WhatsApp aktif</label>

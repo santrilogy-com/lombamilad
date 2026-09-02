@@ -51,6 +51,15 @@ export async function ambilAttemptTerkini(pendaftarId: string): Promise<KuisAtte
         },
       });
     }
+  } else if (!attempt.batasWaktuSoal) {
+    // batasWaktuSoal masih kosong hanya pada satu momen: sesaat setelah attempt dibuat,
+    // sebelum soal pertama pernah diambil (lihat komentar di /api/kuis/mulai — sengaja
+    // ditunda supaya dialog izin kamera tidak memakan jatah waktu soal 1). Mulai hitung
+    // mundur baru di sini, tepat saat soal benar-benar diambil untuk ditampilkan.
+    attempt = await prisma.kuisAttempt.update({
+      where: { id: attempt.id },
+      data: { batasWaktuSoal: new Date(Date.now() + DETIK_PER_SOAL * 1000) },
+    });
   }
 
   return attempt;

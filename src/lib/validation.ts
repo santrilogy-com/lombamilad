@@ -24,9 +24,9 @@ export const pendaftarSchema = z.object({
     invalid_type_error: 'Pilih cabang lomba terlebih dahulu.',
   }),
   nama: z.string().trim().min(3, 'Nama minimal 3 karakter').max(120),
-  tempatLahir: z.string().trim().min(2).max(120),
+  tempatLahir: z.string().trim().min(2, 'Tempat lahir minimal 2 karakter').max(120),
   tanggalLahir: z.string().min(1, 'Tanggal lahir wajib diisi'),
-  asalLembaga: z.string().trim().min(2).max(200),
+  asalLembaga: z.string().trim().min(2, 'Asal pesantren/lembaga wajib diisi (isi "-" jika mandiri)').max(200),
   email: z
     .string()
     .trim()
@@ -37,7 +37,7 @@ export const pendaftarSchema = z.object({
     .string()
     .trim()
     .regex(/^(08|62|8)[0-9]{8,14}$/, 'Format nomor WhatsApp tidak valid'),
-  nomorIdentitas: z.string().trim().min(4).max(60),
+  nomorIdentitas: z.string().trim().min(4, 'Nomor identitas minimal 4 karakter').max(60),
 });
 
 export function buatNomorPendaftaran(urutan: number, cabang: string): string {
