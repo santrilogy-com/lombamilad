@@ -6,7 +6,7 @@ export const metadata = { title: 'Kuis Penyisihan Babak I — MQK' };
 
 export default function KuisMqkPage() {
   return (
-    <div style={{ position: 'relative', overflow: 'hidden', flex: 1 }}>
+    <div style={{ position: 'relative', zIndex: 0, overflow: 'hidden', flex: 1 }}>
       <PageOrnaments />
       <Suspense fallback={null}>
         <KuisMqkClient />

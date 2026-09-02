@@ -6,7 +6,7 @@ export default function PageShell({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ overflowX: 'hidden', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Navbar />
-      <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+      <div style={{ flex: 1, position: 'relative', zIndex: 0, overflow: 'hidden' }}>
         <PageOrnaments />
         {children}
       </div>
