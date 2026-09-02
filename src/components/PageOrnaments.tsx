@@ -23,6 +23,16 @@
 // near-invisible (renders as a faint pattern on one page, vanishes completely on
 // another, purely from sub-pixel-sensitive anti-aliasing). Doing the crop + resize
 // once with a quality resample keeps the linework crisp regardless of viewport.
+//
+// AESTHETIC NOTE (why these bleed off the viewport edges like the homepage hero):
+// The hero ornaments (Hero.tsx) sit in LARGE boxes anchored with negative offsets
+// (top:-14%/bottom:-12%, right:-4%/left:-6%) so each lattice bleeds off the section
+// edge and gets softly clipped by overflow:hidden — that's what makes them read as
+// an organic sweep flowing across the page instead of a stuck-on decal. The earlier
+// version of this component drew the square *sm crop fully inside* the corners
+// (top:0/right:0, bottom:0/left:0), so the ≤360px box showed a hard-edged square of
+// texture. Mirroring the hero's bleed keeps the same coverage and linework but clips
+// the box mid-texture at the viewport edge, killing the harsh square boundary.
 export default function PageOrnaments() {
   return (
     <>
@@ -30,15 +40,15 @@ export default function PageOrnaments() {
         aria-hidden="true"
         style={{
           position: 'absolute',
-          top: 0,
-          right: 0,
-          width: 'min(40vw, 360px)',
-          height: 'min(40vw, 360px)',
+          top: '-9%',
+          right: '-9%',
+          width: 'min(58vw, 500px)',
+          height: 'min(58vw, 500px)',
           backgroundImage: 'url(/ornamen-atas-sm.png)',
           backgroundRepeat: 'no-repeat',
           backgroundSize: 'cover',
           backgroundPosition: 'right top',
-          opacity: 0.55,
+          opacity: 0.5,
           zIndex: -1,
           pointerEvents: 'none',
           animation: 'pageOrnamentGlow 10000ms ease-in-out infinite',
@@ -48,15 +58,15 @@ export default function PageOrnaments() {
         aria-hidden="true"
         style={{
           position: 'absolute',
-          bottom: 0,
-          left: 0,
-          width: 'min(36vw, 320px)',
-          height: 'min(36vw, 320px)',
+          bottom: '-10%',
+          left: '-9%',
+          width: 'min(56vw, 480px)',
+          height: 'min(56vw, 480px)',
           backgroundImage: 'url(/ornamen-bawah-sm.png)',
           backgroundRepeat: 'no-repeat',
           backgroundSize: 'cover',
           backgroundPosition: 'left bottom',
-          opacity: 0.55,
+          opacity: 0.5,
           zIndex: -1,
           pointerEvents: 'none',
           animation: 'pageOrnamentGlow 11000ms ease-in-out infinite 500ms',
