@@ -237,20 +237,28 @@ a.nav-link:hover::after { right: 0; }
 .hero-orn-atas { right: -4%; top: -14%; width: 46%; height: 80%; z-index: 0; }
 
 /* Page ornaments (PageOrnaments.tsx) — same opacity/animation as the hero
-   ornaments above (see PageOrnaments.tsx), but sized from the viewport
-   instead of a percentage of their own wrapper. The hero's 62%/90% etc. are
-   percentages of the hero SECTION, which is roughly one viewport tall, so
-   they read as a large-but-contained corner sweep. PageOrnaments' wrapper
-   spans the whole page (which can be many viewports tall on a long form or
-   table), so the same percentages blow the ornament up to many times the
-   intended size and force next/image to upscale it into a blurry mess.
-   Capping each dimension in vw/vh — with the hero's approximate desktop
-   pixel size as the ceiling — keeps the apparent size the same as the hero
-   on every page, regardless of how tall that page's content is. Negative
-   z-index (vs. the hero's positive one) because arbitrary page content here
-   isn't lifted to z-index:2 the way Hero's `.g-hero` column is. */
-.page-orn-bawah { left: -6vw; bottom: -12vh; width: min(62vw, 900px); height: min(90vh, 810px); z-index: -1; }
-.page-orn-atas { right: -4vw; top: -14vh; width: min(46vw, 660px); height: min(80vh, 720px); z-index: -1; }
+   ornaments above (see PageOrnaments.tsx). Sizing can't just reuse the
+   hero's 62%/90% etc. as-is: those are percentages of the hero SECTION,
+   and PageOrnaments' wrapper spans the whole page (which can be many
+   viewports tall on a long form or table), so the same percentages blow
+   the ornament up to many times the intended size on those pages and
+   force next/image to upscale it into a blurry mess.
+   Measuring the hero's own rendered box across viewports (1024–1920px
+   wide, desktop grid layout) shows its WIDTH tracks the viewport linearly
+   (~62vw / ~46vw, matching the CSS almost exactly at every width — the
+   hero section itself is viewport-width, so this needs no adjustment) but
+   its HEIGHT does NOT track viewport height at all — it's driven by the
+   hero's own content (clamped font-size, logo aspect-ratio) and stays in
+   a fairly narrow band (~580–730px / ~520–650px) across all desktop
+   widths. So width here stays plain vw (unbounded, exactly like the hero),
+   while height uses a vw-scaled clamp fitted to that measured band, which
+   keeps pages proportioned like the hero at common desktop widths without
+   the box ballooning on tall pages OR going disproportionately tall on
+   narrow ones (the previous vh-based cap's failure mode). Negative z-index
+   (vs. the hero's positive one) because arbitrary page content here isn't
+   lifted to z-index:2 the way Hero's `.g-hero` column is. */
+.page-orn-bawah { left: -6vw; bottom: -6vw; width: 62vw; height: clamp(340px, 50vw, 720px); z-index: -1; }
+.page-orn-atas { right: -4vw; top: -7vw; width: 46vw; height: clamp(300px, 44vw, 640px); z-index: -1; }
 
 @media (max-width: 860px) {
   .g-hero { grid-template-columns: 1fr; }
