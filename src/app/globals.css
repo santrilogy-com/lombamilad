@@ -231,19 +231,26 @@ a.nav-link:hover::after { right: 0; }
 .table-scroll::-webkit-scrollbar { height: 6px; }
 .table-scroll::-webkit-scrollbar-thumb { background: var(--olive-l); border-radius: 3px; }
 
-/* Hero ornaments — desktop sizing (unchanged from original design).
-   .page-orn-* share the exact same size/position as their .hero-orn-*
-   counterpart (used on every other page via PageOrnaments) but need a
-   negative z-index instead: Hero can use a positive z-index because its
-   text column (.g-hero) is explicitly lifted to z-index:2, but arbitrary
-   page content elsewhere has no such lift, so the ornaments must sit
-   behind it via negative z-index instead (see PageOrnaments.tsx). */
+/* Hero ornaments — desktop sizing (unchanged from original design). */
 .hero-orn { position: absolute; pointer-events: none; }
-.hero-orn-bawah, .page-orn-bawah { left: -6%; bottom: -12%; width: 62%; height: 90%; }
-.hero-orn-atas, .page-orn-atas { right: -4%; top: -14%; width: 46%; height: 80%; }
-.hero-orn-bawah { z-index: 1; }
-.hero-orn-atas { z-index: 0; }
-.page-orn-bawah, .page-orn-atas { z-index: -1; }
+.hero-orn-bawah { left: -6%; bottom: -12%; width: 62%; height: 90%; z-index: 1; }
+.hero-orn-atas { right: -4%; top: -14%; width: 46%; height: 80%; z-index: 0; }
+
+/* Page ornaments (PageOrnaments.tsx) — same opacity/animation as the hero
+   ornaments above (see PageOrnaments.tsx), but sized from the viewport
+   instead of a percentage of their own wrapper. The hero's 62%/90% etc. are
+   percentages of the hero SECTION, which is roughly one viewport tall, so
+   they read as a large-but-contained corner sweep. PageOrnaments' wrapper
+   spans the whole page (which can be many viewports tall on a long form or
+   table), so the same percentages blow the ornament up to many times the
+   intended size and force next/image to upscale it into a blurry mess.
+   Capping each dimension in vw/vh — with the hero's approximate desktop
+   pixel size as the ceiling — keeps the apparent size the same as the hero
+   on every page, regardless of how tall that page's content is. Negative
+   z-index (vs. the hero's positive one) because arbitrary page content here
+   isn't lifted to z-index:2 the way Hero's `.g-hero` column is. */
+.page-orn-bawah { left: -6vw; bottom: -12vh; width: min(62vw, 900px); height: min(90vh, 810px); z-index: -1; }
+.page-orn-atas { right: -4vw; top: -14vh; width: min(46vw, 660px); height: min(80vh, 720px); z-index: -1; }
 
 @media (max-width: 860px) {
   .g-hero { grid-template-columns: 1fr; }
@@ -263,8 +270,8 @@ a.nav-link:hover::after { right: 0; }
      anchors the two ornaments' 90%/80%-tall boxes reach past the middle of
      the section and overlap. Push each anchor further off its own edge so
      they clear each other without touching their size. */
-  .hero-orn-bawah, .page-orn-bawah { bottom: -45%; }
-  .hero-orn-atas, .page-orn-atas { top: -45%; }
+  .hero-orn-bawah { bottom: -45%; }
+  .hero-orn-atas { top: -45%; }
 }
 .g-formulir-span2 { grid-column: span 2; }
 @media (max-width: 560px) {
