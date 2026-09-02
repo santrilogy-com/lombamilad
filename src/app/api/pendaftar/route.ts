@@ -28,6 +28,12 @@ async function nomorUrutBerikutnya(): Promise<number> {
   return parseInt(rows[0].value, 10) - 1;
 }
 
+// Di-await di call site (bukan fire-and-forget) karena fungsi serverless bisa langsung
+// dibekukan begitu response dikirim — kalau tidak ditunggu, pengiriman SMTP di background
+// berisiko terpotong sebelum selesai dan emailnya batal terkirim tanpa ada error yang
+// terlihat sama sekali. Nama fungsi dipertahankan karena masih "gagal diam-diam" (tidak
+// pernah melempar — lihat try/catch di dalamnya dan di sendEmail di src/lib/email.ts),
+// jadi ini tidak menggagalkan/menunda respons ke peserta bila SMTP gagal, hanya bila lambat.
 async function fireAndForgetEmail(nama: string, cabangId: string, p: { nomorPendaftaran: string; tokenCek: string }, base: URL, email?: string | null) {
   if (!email) return;
   try {
@@ -157,7 +163,7 @@ export async function POST(req: Request) {
         },
       });
 
-      fireAndForgetEmail(d.nama, d.cabang, pendaftar, new URL(req.url), d.email);
+      await fireAndForgetEmail(d.nama, d.cabang, pendaftar, new URL(req.url), d.email);
 
       return NextResponse.json(
         {

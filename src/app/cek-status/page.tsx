@@ -308,6 +308,8 @@ function CekStatusForm() {
             <KuisCard nomor={result.nomorPendaftaran} token={token} kuis={result.kuis} status={result.statusKode} />
           ) : null}
 
+          <PanggilanCard nomor={result.nomorPendaftaran} token={token} cabangId={result.cabangId} statusKode={result.statusKode} />
+
           <PengumumanSection pengumuman={result.pengumuman} />
         </>
       ) : null}
@@ -443,6 +445,38 @@ function KuisCard({ nomor, token, kuis, status }: { nomor: string; token: string
           Kuis Babak I belum dibuka oleh panitia. Pantau halaman ini untuk info terbaru.
         </p>
       )}
+    </div>
+  );
+}
+
+// Mirror STATUS_DIBLOKIR di src/lib/panggilan.ts (tidak diimpor langsung dari sana karena
+// modul itu juga mengekspor fungsi yang memuat Prisma client — mengimpornya di sini akan
+// ikut membawa Prisma ke bundle klien). MTQ: layak begitu terverifikasi (sidang video ini
+// penyisihannya). MQK: layak hanya setelah lolos Babak I.
+const STATUS_TIDAK_LAYAK_PANGGILAN = new Set(['MENUNGGU_VERIFIKASI', 'DITOLAK', 'GUGUR_PENYISIHAN']);
+
+function PanggilanCard({ nomor, token, cabangId, statusKode }: { nomor: string; token: string; cabangId: string; statusKode: string }) {
+  if (STATUS_TIDAK_LAYAK_PANGGILAN.has(statusKode)) return null;
+  if (cabangId === 'mqk' && statusKode === 'TERVERIFIKASI') return null; // MQK: masih menunggu proses Babak I
+  if (cabangId !== 'mtq' && cabangId !== 'mqk') return null;
+
+  const ruang = cabangId === 'mtq' ? 'mtq' : 'mqk-babak2';
+  const judul = cabangId === 'mtq' ? 'Sidang MTQ' : 'Sidang MQK — Babak II';
+  const href = `/panggilan/${ruang}?${new URLSearchParams({ nomor, token })}`;
+
+  return (
+    <div style={{ background: 'var(--olive-p)', borderRadius: 4, padding: 'clamp(22px, 3vw, 30px)', marginBottom: 20 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--olive-d)' }}>
+        {judul}
+      </div>
+      <p style={{ fontSize: 14, color: '#4b4740', margin: '10px 0 16px' }}>
+        Sesi ini dinilai lewat video call. Ruangnya baru bisa dimasuki setelah dibuka panitia
+        menjelang jadwal Anda — silakan pastikan kamera dan mikrofon perangkat Anda siap dan diizinkan
+        oleh peramban sebelum masuk.
+      </p>
+      <Link href={href} style={{ display: 'inline-flex', alignItems: 'center', height: 46, padding: '0 22px', background: 'var(--ink)', color: 'var(--paper)', fontSize: 13.5, fontWeight: 600, borderRadius: 2 }}>
+        Masuk Ruang Sidang →
+      </Link>
     </div>
   );
 }

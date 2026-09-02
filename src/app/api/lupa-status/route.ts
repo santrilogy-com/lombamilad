@@ -54,7 +54,12 @@ export async function POST(req: Request) {
   }));
 
   if (found[0].email) {
-    kirimLupaStatus({ to: found[0].email, nama: found[0].nama, daftar: hasil }).catch(() => {});
+    // Di-await (bukan fire-and-forget) karena fungsi serverless bisa langsung dibekukan
+    // begitu response dikirim — kalau tidak ditunggu, pengiriman SMTP di background
+    // berisiko terpotong sebelum selesai dan emailnya batal terkirim tanpa ada error yang
+    // terlihat sama sekali. kirimLupaStatus tetap tidak pernah melempar (lihat sendEmail
+    // di src/lib/email.ts), jadi ini tidak menggagalkan response bila SMTP gagal/lambat.
+    await kirimLupaStatus({ to: found[0].email, nama: found[0].nama, daftar: hasil });
   }
 
   return NextResponse.json({ hasil });

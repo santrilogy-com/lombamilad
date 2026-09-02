@@ -26,7 +26,11 @@ export const pendaftarSchema = z.object({
   nama: z.string().trim().min(3, 'Nama minimal 3 karakter').max(120),
   tempatLahir: z.string().trim().min(2, 'Tempat lahir minimal 2 karakter').max(120),
   tanggalLahir: z.string().min(1, 'Tanggal lahir wajib diisi'),
-  asalLembaga: z.string().trim().min(2, 'Asal pesantren/lembaga wajib diisi (isi "-" jika mandiri)').max(200),
+  // min(1) — bukan min(2) — karena placeholder form ("mandiri: isi '-'") secara eksplisit
+  // menyuruh pendaftar mandiri mengisi satu karakter "-". Dengan min(2), tanda "-" tunggal itu
+  // sendiri DITOLAK server (400) meski sudah mengikuti instruksi placeholder-nya persis, jadi
+  // seluruh pendaftaran mandiri gagal tersimpan tanpa penyebab yang jelas ke pendaftar.
+  asalLembaga: z.string().trim().min(1, 'Asal pesantren/lembaga wajib diisi (isi "-" jika mandiri)').max(200),
   email: z
     .string()
     .trim()
