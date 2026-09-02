@@ -35,6 +35,7 @@ async function fireAndForgetEmail(nama: string, cabangId: string, p: { nomorPend
       to: email,
       nama,
       cabang: LOMBA.find((c) => c.id === cabangId)?.name || cabangId,
+      cabangId,
       nomorPendaftaran: p.nomorPendaftaran,
       tokenCek: p.tokenCek,
       baseUrl: base.origin,

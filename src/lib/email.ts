@@ -64,12 +64,26 @@ export async function kirimKonfirmasiPendaftar(opts: {
   to: string;
   nama: string;
   cabang: string;
+  cabangId: string;
   nomorPendaftaran: string;
   tokenCek: string;
   baseUrl: string;
 }) {
-  const { to, nama, cabang, nomorPendaftaran, tokenCek, baseUrl } = opts;
+  const { to, nama, cabang, cabangId, nomorPendaftaran, tokenCek, baseUrl } = opts;
   const cekUrl = `${baseUrl}/cek-status?nomor=${encodeURIComponent(nomorPendaftaran)}&token=${encodeURIComponent(tokenCek)}`;
+  // MTQ tidak punya babak online terpisah — sidang video INI penyisihannya, jadi
+  // link ruang sidangnya disertakan sejak email konfirmasi pendaftaran (bukan
+  // menunggu status berubah, karena tidak ada perubahan status sebelum sidang).
+  // Membuka link ini sebelum panitia membuka ruang menampilkan pesan yang jelas
+  // ("ruang belum dibuka"), jadi aman disertakan lebih awal.
+  const infoSidangMtq =
+    cabangId === 'mtq'
+      ? `<div style="background:#fff;border-radius:6px;padding:18px 20px;margin:12px 0;">
+          <div style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#7c7b77;">Ruang Sidang MTQ</div>
+          <p style="font-size:13.5px;line-height:1.6;margin:6px 0 12px;">Sidang penilaian MTQ dilakukan lewat video call. Simpan tautan ini — panitia akan membuka ruangnya menjelang jadwal Anda.</p>
+          <a href="${baseUrl}/panggilan/mtq?nomor=${encodeURIComponent(nomorPendaftaran)}&token=${encodeURIComponent(tokenCek)}" style="display:inline-block;background:#8a7c4c;color:#fff;text-decoration:none;padding:11px 20px;border-radius:4px;font-size:13.5px;font-weight:600;">Buka Ruang Sidang MTQ</a>
+        </div>`
+      : '';
   const html = `
     <div style="font-family:Sora,system-ui,sans-serif;background:#efede7;padding:32px;color:#24211c;">
       <div style="max-width:520px;margin:0 auto;background:#e5e2da;border-radius:6px;padding:36px;">
@@ -84,6 +98,7 @@ export async function kirimKonfirmasiPendaftar(opts: {
           <div style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#7c7b77;">Token Cek Status</div>
           <div style="font-size:20px;font-weight:600;">${tokenCek}</div>
         </div>
+        ${infoSidangMtq}
         <p style="font-size:14px;line-height:1.6;">Simpan nomor pendaftaran dan token untuk memantau status seleksi Anda.</p>
         <a href="${cekUrl}" style="display:inline-block;background:#24211c;color:#efede7;text-decoration:none;padding:12px 20px;border-radius:4px;font-size:14px;font-weight:600;">Cek Status Sekarang</a>
         <p style="font-size:12px;color:#7c7b77;margin-top:24px;">Pengumuman resmi diumumkan melalui sidogiri.net dan media sosial resmi Pondok Pesantren Sidogiri.</p>
@@ -185,7 +200,9 @@ export async function kirimHasilEmail(opts: {
   to: string;
   nama: string;
   cabang: string;
+  cabangId: string;
   nomorPendaftaran: string;
+  tokenCek: string;
   statusKode: string;
   nilaiPenyisihan?: number | null;
   peringkatPenyisihan?: number | null;
@@ -195,7 +212,7 @@ export async function kirimHasilEmail(opts: {
   peringkatFinal?: number | null;
   baseUrl: string;
 }): Promise<{ messageId: string }> {
-  const { to, nama, cabang, nomorPendaftaran, statusKode, baseUrl } = opts;
+  const { to, nama, cabang, cabangId, nomorPendaftaran, tokenCek, statusKode, baseUrl } = opts;
   const info = HASIL_LABEL[statusKode] || { label: statusKode, nada: 'netral' as const };
   const warna = info.nada === 'baik' ? '#2e7d2e' : info.nada === 'kurang' ? '#a94442' : '#675c37';
   const bgBanner = info.nada === 'baik' ? '#dbeedb' : info.nada === 'kurang' ? '#f4dede' : '#fff';
@@ -214,6 +231,17 @@ export async function kirimHasilEmail(opts: {
           <div style="font-size:22px;font-weight:600;color:#675c37;margin-top:4px;">${nilai}${peringkat ? ` <span style="font-size:13px;color:#7c7b77;font-weight:400;">(peringkat ${peringkat})</span>` : ''}</div>
         </div>`;
 
+  // Lolos Babak I MQK berarti berhak masuk sidang video Babak II — sertakan link
+  // ruang sidangnya langsung di email hasil ini, bukan menunggu pengumuman terpisah.
+  const infoSidangMqkBabak2 =
+    cabangId === 'mqk' && statusKode === 'LOLOS_PENYISIHAN'
+      ? `<div style="background:#fff;border-radius:6px;padding:18px 20px;margin:0 0 18px;">
+          <div style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#7c7b77;">Ruang Sidang Babak II</div>
+          <p style="font-size:13.5px;line-height:1.6;margin:6px 0 12px;">Babak II dinilai lewat video call. Simpan tautan ini — panitia akan membuka ruangnya menjelang jadwal Anda.</p>
+          <a href="${baseUrl}/panggilan/mqk-babak2?nomor=${encodeURIComponent(nomorPendaftaran)}&token=${encodeURIComponent(tokenCek)}" style="display:inline-block;background:#8a7c4c;color:#fff;text-decoration:none;padding:11px 20px;border-radius:4px;font-size:13.5px;font-weight:600;">Buka Ruang Sidang Babak II</a>
+        </div>`
+      : '';
+
   const html = bungkusEmail(
     'Update Hasil Seleksi',
     `
@@ -225,6 +253,7 @@ export async function kirimHasilEmail(opts: {
       ${baris('Nilai Penyisihan', opts.nilaiPenyisihan, opts.peringkatPenyisihan)}
       ${baris('Nilai Babak II', opts.nilaiBabak2, opts.peringkatBabak2)}
       ${baris('Nilai Final', opts.nilaiFinal, opts.peringkatFinal)}
+      ${infoSidangMqkBabak2}
       <a href="${baseUrl}/cek-status" style="display:inline-block;background:#24211c;color:#efede7;text-decoration:none;padding:12px 20px;border-radius:4px;font-size:14px;font-weight:600;margin-top:8px;">Buka Dashboard Peserta</a>
       <p style="font-size:12px;color:#7c7b77;margin-top:24px;">Keputusan dewan juri bersifat final. Email ini dikirim otomatis oleh panitia.</p>
     `
