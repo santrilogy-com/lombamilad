@@ -90,7 +90,7 @@ export default function PengumumanAdmin({ list }: { list: Item[] }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 32 }}>
       <form onSubmit={buat} style={{ background: 'var(--paper2)', borderRadius: 4, padding: '26px 26px' }}>
-        <h2 style={{ fontFamily: 'var(--disp)', fontWeight: 400, fontSize: 18, letterSpacing: '-0.02em', margin: '0 0 18px' }}>
+        <h2 style={{ fontFamily: 'var(--disp)', fontWeight: 700, fontSize: 15, letterSpacing: '0.01em', margin: '0 0 18px' }}>
           Buat pengumuman baru
         </h2>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
@@ -126,7 +126,7 @@ export default function PengumumanAdmin({ list }: { list: Item[] }) {
       </form>
 
       <div>
-        <h2 style={{ fontFamily: 'var(--disp)', fontWeight: 400, fontSize: 18, letterSpacing: '-0.02em', margin: '0 0 14px' }}>
+        <h2 style={{ fontFamily: 'var(--disp)', fontWeight: 700, fontSize: 15, letterSpacing: '0.01em', margin: '0 0 14px' }}>
           Daftar pengumuman ({items.length})
         </h2>
         {items.length === 0 ? (

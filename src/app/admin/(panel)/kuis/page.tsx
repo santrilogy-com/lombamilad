@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { LABEL_AKTIVITAS_MENCURIGAKAN, type TipeAktivitasMencurigakan } from '@/lib/kuis';
 import SoalKuisManager from './SoalKuisManager';
+import { PageHeader } from '../../ui';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,13 +48,10 @@ export default async function AdminKuisPage() {
 
   return (
     <div>
-      <h1 style={{ fontFamily: 'var(--disp)', fontWeight: 300, fontSize: 'clamp(28px,3vw,40px)', letterSpacing: '-0.04em', margin: '0 0 8px' }}>
-        Kuis Babak I — MQK
-      </h1>
-      <p style={{ fontSize: 14, color: '#5a554c', margin: '0 0 22px' }}>
-        Kelola bank soal, buka/tutup akses kuis, dan pantau progres peserta. Nilai otomatis tersimpan
-        sebagai Nilai Penyisihan dan bisa diproses di halaman Penilaian.
-      </p>
+      <PageHeader
+        title="Kuis Babak I — MQK"
+        description="Kelola bank soal, buka/tutup akses kuis, dan pantau progres peserta. Nilai otomatis tersimpan sebagai Nilai Penyisihan dan bisa diproses di halaman Penilaian."
+      />
 
       <SoalKuisManager
         soalAwal={soal.map((s) => ({ ...s, createdAt: s.createdAt.toISOString(), updatedAt: s.updatedAt.toISOString() }))}

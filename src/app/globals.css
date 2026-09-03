@@ -288,3 +288,61 @@ a.nav-link:hover::after { right: 0; }
   .g-formulir { grid-template-columns: 1fr; }
   .g-formulir-span2 { grid-column: auto; }
 }
+
+/* ==== Admin panel ====
+   Its own visual language: a persistent sidebar instead of the marketing
+   site's tabs, and normal-weight body text (the site-wide `body{font-weight:
+   300}` above reads as thin/soft, fine for editorial marketing copy but
+   fights legibility in dense admin tables). Scoped to .admin-shell so the
+   public site is untouched. */
+.admin-shell { display: flex; font-weight: 400; }
+
+.admin-sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: var(--ink);
+  color: var(--paper);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.admin-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 16px;
+  margin: 0 10px;
+  border-radius: 4px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: rgba(239, 237, 231, 0.72);
+  transition: background 160ms ease, color 160ms ease;
+}
+.admin-nav-link:hover { background: rgba(239, 237, 231, 0.08); color: var(--paper); }
+.admin-nav-link.active { background: var(--olive); color: #fff; font-weight: 600; }
+.admin-nav-link svg { flex-shrink: 0; opacity: 0.9; }
+
+.admin-table thead th { position: sticky; top: 0; background: var(--paper); z-index: 1; }
+.admin-table tbody tr:hover { background: rgba(138, 124, 76, 0.06); }
+
+@media (max-width: 860px) {
+  .admin-shell { flex-direction: column; }
+  .admin-sidebar {
+    width: 100%;
+    height: auto;
+    position: static;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 10px 12px;
+    gap: 4px;
+  }
+  .admin-sidebar-brand { width: 100%; }
+  .admin-sidebar-nav { display: flex; flex-wrap: wrap; flex: 1; }
+  .admin-nav-link { margin: 2px; }
+  .admin-sidebar-foot { width: 100%; border-top: 1px solid rgba(239, 237, 231, 0.14); margin-top: 6px; padding-top: 10px; }
+}

@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { LOMBA } from '@/lib/data';
 import PengumumanAdmin from './PengumumanAdmin';
 import BroadcastWa from './BroadcastWa';
+import { PageHeader } from '../../ui';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,12 +36,7 @@ export default async function AdminPengumumanPage() {
 
   return (
     <div>
-      <h1 style={{ fontFamily: 'var(--disp)', fontWeight: 300, fontSize: 'clamp(28px,3vw,40px)', letterSpacing: '-0.04em', margin: '0 0 8px' }}>
-        Pengumuman
-      </h1>
-      <p style={{ fontSize: 14, color: '#5a554c', margin: '0 0 24px' }}>
-        Kelola pengumuman resmi yang tampil di halaman Seleksi &amp; Penyisihan.
-      </p>
+      <PageHeader title="Pengumuman" description="Kelola pengumuman resmi yang tampil di halaman Seleksi & Penyisihan." />
       <PengumumanAdmin list={serialized} />
 
       <div style={{ marginTop: 40 }}>

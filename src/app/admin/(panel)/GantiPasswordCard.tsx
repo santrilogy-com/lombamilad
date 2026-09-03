@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { SectionHeader, buttonStyle } from '../ui';
 
 const inputStyle = {
   height: 42,
@@ -53,18 +54,15 @@ export default function GantiPasswordCard() {
   }
 
   return (
-    <section style={{ marginBottom: 36 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: open ? 16 : 0, flexWrap: 'wrap' }}>
-        <h2 style={{ fontFamily: 'var(--disp)', fontWeight: 400, fontSize: 20, letterSpacing: '-0.02em', margin: 0 }}>
-          Akun
-        </h2>
-        <button
-          onClick={() => setOpen((v) => !v)}
-          style={{ height: 36, padding: '0 14px', fontSize: 12.5, fontWeight: 600, background: 'transparent', border: '1px solid rgba(36,33,28,0.25)', borderRadius: 2, cursor: 'pointer' }}
-        >
-          {open ? 'Tutup' : 'Ganti Password'}
-        </button>
-      </div>
+    <section>
+      <SectionHeader
+        title="Akun"
+        actions={
+          <button onClick={() => setOpen((v) => !v)} style={buttonStyle('ghost', { small: true })}>
+            {open ? 'Tutup' : 'Ganti Password'}
+          </button>
+        }
+      />
 
       {open ? (
         <form onSubmit={onSubmit} style={{ background: 'var(--paper2)', borderRadius: 4, padding: '24px 26px', display: 'grid', gap: 14, maxWidth: 420 }}>
@@ -124,7 +122,7 @@ export default function GantiPasswordCard() {
           <button
             type="submit"
             disabled={busy}
-            style={{ height: 44, padding: '0 20px', background: 'var(--ink)', color: 'var(--paper)', border: 0, borderRadius: 2, fontSize: 13.5, fontWeight: 600, cursor: busy ? 'wait' : 'pointer', justifySelf: 'start' }}
+            style={{ ...buttonStyle('primary'), cursor: busy ? 'wait' : 'pointer', justifySelf: 'start' }}
           >
             {busy ? 'Menyimpan...' : 'Simpan Password Baru'}
           </button>

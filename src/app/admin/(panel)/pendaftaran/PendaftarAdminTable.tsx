@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { STATUS_META, thStyle } from '../../ui';
 
 type Row = {
   id: string;
@@ -21,17 +22,7 @@ type Row = {
   nilaiFinal: number | null;
 };
 
-const STATUS_OPTIONS = [
-  { k: 'MENUNGGU_VERIFIKASI', l: 'Menunggu verifikasi' },
-  { k: 'TERVERIFIKASI', l: 'Terverifikasi' },
-  { k: 'DITOLAK', l: 'Ditolak' },
-  { k: 'LOLOS_PENYISIHAN', l: 'Lolos penyisihan' },
-  { k: 'GUGUR_PENYISIHAN', l: 'Gugur penyisihan' },
-  { k: 'LOLOS_FINAL', l: 'Lolos final' },
-  { k: 'JUARA_1', l: 'Juara 1' },
-  { k: 'JUARA_2', l: 'Juara 2' },
-  { k: 'JUARA_3', l: 'Juara 3' },
-];
+const STATUS_OPTIONS = Object.keys(STATUS_META).map((k) => ({ k, l: STATUS_META[k].label }));
 
 export default function PendaftarAdminTable({
   pendaftar,
@@ -182,11 +173,11 @@ export default function PendaftarAdminTable({
         </button>
         {pesanMassal ? <span style={{ fontSize: 12.5, color: 'var(--grey)' }}>{pesanMassal}</span> : null}
       </div>
-      <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
+      <div style={{ overflowX: 'auto', border: '1px solid var(--line)', borderRadius: 6, maxHeight: '72vh', overflowY: 'auto' }}>
+      <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
         <thead>
-          <tr style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--grey)', textAlign: 'left' }}>
-            <th style={{ padding: '10px 10px', borderBottom: '2px solid var(--ink)' }}>
+          <tr>
+            <th style={{ ...thStyle, padding: '10px 10px' }}>
               <input
                 type="checkbox"
                 checked={rows.length > 0 && terpilih.size === rows.length}
@@ -194,13 +185,13 @@ export default function PendaftarAdminTable({
                 aria-label="Pilih semua pendaftar"
               />
             </th>
-            <th style={{ padding: '10px 10px', borderBottom: '2px solid var(--ink)' }}>No.</th>
-            <th style={{ padding: '10px 10px', borderBottom: '2px solid var(--ink)' }}>Nama / Lembaga</th>
-            <th style={{ padding: '10px 10px', borderBottom: '2px solid var(--ink)' }}>Cabang</th>
-            <th style={{ padding: '10px 10px', borderBottom: '2px solid var(--ink)' }}>Status</th>
-            <th style={{ padding: '10px 10px', borderBottom: '2px solid var(--ink)' }}>Nilai (P/F)</th>
-            <th style={{ padding: '10px 10px', borderBottom: '2px solid var(--ink)' }}>Berkas</th>
-            <th style={{ padding: '10px 10px', borderBottom: '2px solid var(--ink)' }}>Aksi</th>
+            <th style={{ ...thStyle, padding: '10px 10px' }}>No.</th>
+            <th style={{ ...thStyle, padding: '10px 10px' }}>Nama / Lembaga</th>
+            <th style={{ ...thStyle, padding: '10px 10px' }}>Cabang</th>
+            <th style={{ ...thStyle, padding: '10px 10px' }}>Status</th>
+            <th style={{ ...thStyle, padding: '10px 10px' }}>Nilai (P/F)</th>
+            <th style={{ ...thStyle, padding: '10px 10px' }}>Berkas</th>
+            <th style={{ ...thStyle, padding: '10px 10px' }}>Aksi</th>
           </tr>
         </thead>
         <tbody>

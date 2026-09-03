@@ -1,6 +1,8 @@
+import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { LOMBA } from '@/lib/data';
 import PenilaianTable from './PenilaianTable';
+import { PageHeader, chipStyle } from '../../ui';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,29 +44,24 @@ export default async function AdminPenilaianPage({
 
   return (
     <div>
-      <h1 style={{ fontFamily: 'var(--disp)', fontWeight: 300, fontSize: 'clamp(28px,3vw,40px)', letterSpacing: '-0.04em', margin: '0 0 8px' }}>
-        Penilaian &amp; Seleksi
-      </h1>
-      <p style={{ fontSize: 14, color: '#5a554c', margin: '0 0 22px' }}>
-        Input nilai penyisihan/final. Tombol &quot;Proses Kelulusan&quot; menghitung peringkat dan menandai
-        otomatis status LOLOS/GUGUR (kuota final disesuaikan per cabang).
-      </p>
+      <PageHeader
+        title="Penilaian & Seleksi"
+        description={
+          <>
+            Input nilai penyisihan/final. Tombol &quot;Proses Kelulusan&quot; menghitung peringkat dan menandai
+            otomatis status LOLOS/GUGUR (kuota final disesuaikan per cabang).
+          </>
+        }
+      />
 
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 22 }}>
-        <a
-          href="/admin/penilaian"
-          style={{ padding: '8px 14px', fontSize: 12.5, fontWeight: 600, borderRadius: 99, background: !cabangId ? 'var(--olive)' : 'var(--paper2)', color: !cabangId ? '#fff' : 'var(--ink)' }}
-        >
+        <Link href="/admin/penilaian" style={chipStyle(!cabangId)}>
           Semua cabang
-        </a>
+        </Link>
         {LOMBA.map((c) => (
-          <a
-            key={c.id}
-            href={`/admin/penilaian?cabang=${c.id}&tahap=${tahap}`}
-            style={{ padding: '8px 14px', fontSize: 12.5, fontWeight: 600, borderRadius: 99, background: cabangId === c.id ? 'var(--olive)' : 'var(--paper2)', color: cabangId === c.id ? '#fff' : 'var(--ink)' }}
-          >
+          <Link key={c.id} href={`/admin/penilaian?cabang=${c.id}&tahap=${tahap}`} style={chipStyle(cabangId === c.id)}>
             {c.short}
-          </a>
+          </Link>
         ))}
       </div>
 

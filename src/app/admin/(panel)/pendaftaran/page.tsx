@@ -1,20 +1,10 @@
+import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { LOMBA } from '@/lib/data';
 import PendaftarAdminTable from './PendaftarAdminTable';
+import { PageHeader, chipStyle, statusMeta } from '../../ui';
 
 export const dynamic = 'force-dynamic';
-
-const STATUS_MAP: Record<string, string> = {
-  MENUNGGU_VERIFIKASI: 'Menunggu verifikasi',
-  TERVERIFIKASI: 'Terverifikasi',
-  DITOLAK: 'Ditolak',
-  LOLOS_PENYISIHAN: 'Lolos penyisihan',
-  GUGUR_PENYISIHAN: 'Gugur penyisihan',
-  LOLOS_FINAL: 'Lolos final',
-  JUARA_1: 'Juara 1',
-  JUARA_2: 'Juara 2',
-  JUARA_3: 'Juara 3',
-};
 
 const PAGE_SIZE = 50;
 
@@ -66,7 +56,7 @@ export default async function AdminPendaftaranPage({
     whatsapp: p.whatsapp,
     cabangId: p.cabangId,
     cabangNama: LOMBA.find((c) => c.id === p.cabangId)?.name || p.cabangId,
-    status: STATUS_MAP[p.status] || p.status,
+    status: statusMeta(p.status).label,
     statusKode: p.status,
     usia: p.usia,
     tanggalDaftar: p.createdAt.toISOString(),
@@ -79,42 +69,19 @@ export default async function AdminPendaftaranPage({
 
   return (
     <div>
-      <h1 style={{ fontFamily: 'var(--disp)', fontWeight: 300, fontSize: 'clamp(28px,3vw,40px)', letterSpacing: '-0.04em', margin: '0 0 8px' }}>
-        Kelola Pendaftaran
-      </h1>
-      <p style={{ fontSize: 14, color: '#5a554c', margin: '0 0 24px' }}>
-        Total {total} pendaftar. Verifikasi berkas dan kelola status peserta.
-      </p>
+      <PageHeader
+        title="Kelola Pendaftaran"
+        description={`Total ${total} pendaftar. Verifikasi berkas dan kelola status peserta.`}
+      />
 
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 22 }}>
-        <a
-          href="/admin/pendaftaran"
-          style={{
-            padding: '8px 14px',
-            fontSize: 12.5,
-            fontWeight: 600,
-            borderRadius: 99,
-            background: !cabangId ? 'var(--olive)' : 'var(--paper2)',
-            color: !cabangId ? '#fff' : 'var(--ink)',
-          }}
-        >
+        <Link href="/admin/pendaftaran" style={chipStyle(!cabangId)}>
           Semua ({total})
-        </a>
+        </Link>
         {perCabang.map((c) => (
-          <a
-            key={c.id}
-            href={`/admin/pendaftaran?cabang=${c.id}`}
-            style={{
-              padding: '8px 14px',
-              fontSize: 12.5,
-              fontWeight: 600,
-              borderRadius: 99,
-              background: cabangId === c.id ? 'var(--olive)' : 'var(--paper2)',
-              color: cabangId === c.id ? '#fff' : 'var(--ink)',
-            }}
-          >
+          <Link key={c.id} href={`/admin/pendaftaran?cabang=${c.id}`} style={chipStyle(cabangId === c.id)}>
             {c.short} ({c.jumlah})
-          </a>
+          </Link>
         ))}
       </div>
 
@@ -129,7 +96,7 @@ export default async function AdminPendaftaranPage({
             if (p > 1) params.set('page', String(p));
             const qs = params.toString();
             return (
-              <a
+              <Link
                 key={p}
                 href={`/admin/pendaftaran${qs ? `?${qs}` : ''}`}
                 style={{
@@ -147,7 +114,7 @@ export default async function AdminPendaftaranPage({
                 }}
               >
                 {p}
-              </a>
+              </Link>
             );
           })}
           <span style={{ fontSize: 12.5, color: 'var(--grey)', marginLeft: 8 }}>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
+import { Badge, thStyle } from '../../ui';
 
 type Row = {
   id: string;
@@ -17,16 +18,6 @@ type Row = {
   peringkatPenyisihan: number | null;
   peringkatBabak2: number | null;
   peringkatFinal: number | null;
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  TERVERIFIKASI: 'Terverifikasi',
-  LOLOS_PENYISIHAN: 'Lolos penyisihan',
-  GUGUR_PENYISIHAN: 'Gugur penyisihan',
-  LOLOS_FINAL: 'Lolos final',
-  JUARA_1: 'Juara 1',
-  JUARA_2: 'Juara 2',
-  JUARA_3: 'Juara 3',
 };
 
 export default function PenilaianTable({
@@ -223,7 +214,7 @@ export default function PenilaianTable({
         return (
         <div key={cid} style={{ marginBottom: 34 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap', marginBottom: 12 }}>
-            <h3 style={{ fontFamily: 'var(--disp)', fontWeight: 400, fontSize: 18, letterSpacing: '-0.02em', margin: 0 }}>
+            <h3 style={{ fontFamily: 'var(--disp)', fontWeight: 700, fontSize: 14.5, letterSpacing: '0.01em', margin: 0 }}>
               {peserta[0]?.cabangNama}
             </h3>
             <button
@@ -248,22 +239,22 @@ export default function PenilaianTable({
                   : `Kirim Hasil ke Email (${bisaKirim.length})`}
             </button>
           </div>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
+          <div style={{ overflowX: 'auto', border: '1px solid var(--line)', borderRadius: 6 }}>
+            <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
               <thead>
-                <tr style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--grey)', textAlign: 'left' }}>
-                  <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>No.</th>
-                  <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Nama</th>
-                  <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Nilai Penyisihan</th>
-                  <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Peringkat</th>
+                <tr>
+                  <th style={{ ...thStyle, padding: '9px 10px' }}>No.</th>
+                  <th style={{ ...thStyle, padding: '9px 10px' }}>Nama</th>
+                  <th style={{ ...thStyle, padding: '9px 10px' }}>Nilai Penyisihan</th>
+                  <th style={{ ...thStyle, padding: '9px 10px' }}>Peringkat</th>
                   {cid === 'mqk' ? (
                     <>
-                      <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Nilai Babak II</th>
-                      <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Peringkat II</th>
+                      <th style={{ ...thStyle, padding: '9px 10px' }}>Nilai Babak II</th>
+                      <th style={{ ...thStyle, padding: '9px 10px' }}>Peringkat II</th>
                     </>
                   ) : null}
-                  <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Nilai Final</th>
-                  <th style={{ padding: '9px 10px', borderBottom: '2px solid var(--ink)' }}>Status</th>
+                  <th style={{ ...thStyle, padding: '9px 10px' }}>Nilai Final</th>
+                  <th style={{ ...thStyle, padding: '9px 10px' }}>Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -294,7 +285,9 @@ export default function PenilaianTable({
                     <td style={{ padding: '10px', borderBottom: '1px solid var(--line)' }}>
                       <NilaiInput value={p.nilaiFinal} disabled={busy} onChange={(v) => saveNilai(p.id, 'nilaiFinal', v)} />
                     </td>
-                    <td style={{ padding: '10px', borderBottom: '1px solid var(--line)', fontSize: 12.5 }}>{STATUS_LABEL[p.status] || p.status}</td>
+                    <td style={{ padding: '10px', borderBottom: '1px solid var(--line)' }}>
+                      <Badge status={p.status} />
+                    </td>
                   </tr>
                 ))}
               </tbody>

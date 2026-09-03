@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { cardStyle } from '../../ui';
 
 type Soal = {
   id: string;
@@ -54,8 +55,6 @@ const btnStyle = {
   fontWeight: 600,
   cursor: 'pointer',
 } as const;
-
-const cardStyle = { background: 'var(--paper2)', borderRadius: 4, padding: '20px 22px' };
 
 export default function SoalKuisManager({
   soalAwal,
@@ -272,7 +271,7 @@ export default function SoalKuisManager({
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px,1fr))', gap: 14 }}>
         <div style={cardStyle}>
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--grey)' }}>Akses kuis</div>
-          <div style={{ fontFamily: 'var(--disp)', fontSize: 20, margin: '10px 0 14px' }}>
+          <div style={{ fontFamily: 'var(--disp)', fontWeight: 600, fontSize: 15.5, margin: '10px 0 14px' }}>
             {statusKuis === 'dibuka' ? 'Dibuka' : 'Tertutup'} · {aktifCount} soal aktif
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -286,15 +285,15 @@ export default function SoalKuisManager({
         </div>
         <div style={cardStyle}>
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--grey)' }}>Belum mulai</div>
-          <div style={{ fontFamily: 'var(--disp)', fontSize: 30, marginTop: 8 }}>{ringkasan.belumMulai}</div>
+          <div style={{ fontFamily: 'var(--disp)', fontWeight: 700, fontSize: 26, marginTop: 8, letterSpacing: '-0.01em' }}>{ringkasan.belumMulai}</div>
         </div>
         <div style={cardStyle}>
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--grey)' }}>Sedang mengerjakan</div>
-          <div style={{ fontFamily: 'var(--disp)', fontSize: 30, marginTop: 8 }}>{ringkasan.sedang}</div>
+          <div style={{ fontFamily: 'var(--disp)', fontWeight: 700, fontSize: 26, marginTop: 8, letterSpacing: '-0.01em' }}>{ringkasan.sedang}</div>
         </div>
         <div style={cardStyle}>
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--grey)' }}>Selesai · rata-rata</div>
-          <div style={{ fontFamily: 'var(--disp)', fontSize: 30, marginTop: 8 }}>
+          <div style={{ fontFamily: 'var(--disp)', fontWeight: 700, fontSize: 26, marginTop: 8, letterSpacing: '-0.01em' }}>
             {ringkasan.selesai} <span style={{ fontSize: 15, color: 'var(--grey)' }}>· {ringkasan.rataSkor ?? '–'}</span>
           </div>
         </div>
@@ -302,7 +301,7 @@ export default function SoalKuisManager({
 
       {/* Impor massal */}
       <div style={cardStyle}>
-        <h3 style={{ fontFamily: 'var(--disp)', fontWeight: 400, fontSize: 17, margin: '0 0 10px' }}>Impor soal massal</h3>
+        <h3 style={{ fontFamily: 'var(--disp)', fontWeight: 700, fontSize: 15, margin: '0 0 10px' }}>Impor soal massal</h3>
         <p style={{ fontSize: 12.5, color: '#5a554c', margin: '0 0 10px' }}>
           Satu baris per soal, format: <code>Soal|PilihanA|PilihanB|PilihanC|PilihanD|Jawaban|Kategori</code> (Kategori opsional).
         </p>
@@ -332,7 +331,7 @@ export default function SoalKuisManager({
 
       {/* Tambah satu soal */}
       <div style={cardStyle}>
-        <h3 style={{ fontFamily: 'var(--disp)', fontWeight: 400, fontSize: 17, margin: '0 0 14px' }}>Tambah soal</h3>
+        <h3 style={{ fontFamily: 'var(--disp)', fontWeight: 700, fontSize: 15, margin: '0 0 14px' }}>Tambah soal</h3>
         <form onSubmit={tambahSoal} style={{ display: 'grid', gap: 10 }}>
           <textarea
             value={tambah.soal}
@@ -363,7 +362,7 @@ export default function SoalKuisManager({
       {/* Daftar soal */}
       <div style={cardStyle}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
-          <h3 style={{ fontFamily: 'var(--disp)', fontWeight: 400, fontSize: 17, margin: 0 }}>Bank soal ({soal.length})</h3>
+          <h3 style={{ fontFamily: 'var(--disp)', fontWeight: 700, fontSize: 15, margin: 0 }}>Bank soal ({soal.length})</h3>
           <div style={{ display: 'flex', gap: 8 }}>
             <button
               type="button"
@@ -468,7 +467,7 @@ export default function SoalKuisManager({
 
       {/* Monitoring peserta */}
       <div style={cardStyle}>
-        <h3 style={{ fontFamily: 'var(--disp)', fontWeight: 400, fontSize: 17, margin: '0 0 14px' }}>Progres peserta</h3>
+        <h3 style={{ fontFamily: 'var(--disp)', fontWeight: 700, fontSize: 15, margin: '0 0 14px' }}>Progres peserta</h3>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
             <thead>

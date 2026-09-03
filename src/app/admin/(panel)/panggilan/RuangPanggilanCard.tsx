@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { RuangPanggilan } from '@/lib/panggilan';
+import { cardStyle } from '../../ui';
 
 export default function RuangPanggilanCard({
   ruang,
@@ -58,10 +59,10 @@ export default function RuangPanggilanCard({
   const dibuka = status === 'dibuka';
 
   return (
-    <div style={{ background: 'var(--paper2)', borderRadius: 4, padding: '22px 24px' }}>
+    <div style={cardStyle}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div>
-          <div style={{ fontFamily: 'var(--disp)', fontWeight: 400, fontSize: 20, letterSpacing: '-0.02em', color: 'var(--ink)' }}>
+          <div style={{ fontFamily: 'var(--disp)', fontWeight: 700, fontSize: 15.5, letterSpacing: '-0.01em', color: 'var(--ink)' }}>
             {judul}
           </div>
           <p style={{ fontSize: 13, color: 'var(--grey)', margin: '6px 0 0', maxWidth: '60ch' }}>{keterangan}</p>

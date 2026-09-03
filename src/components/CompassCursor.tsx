@@ -1,19 +1,30 @@
 'use client';
 
 import { useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 
 /**
  * Meniru "cursor + kompas" dari file HTML asli: pointer kursor diganti oleh
  * gambar jarum kompas (compass-needle.png) yang mengikuti gerakan mouse dan
  * berputar sesuai arah gerak, membesar saat mengarah ke elemen interaktif.
  * Juga mengaktifkan animasi reveal (.reveal) berbasisIntersectionObserver.
+ *
+ * Public marketing site only — skipped entirely on /admin. The reveal
+ * MutationObserver watches the whole document body subtree, and .reveal
+ * isn't used anywhere in the admin panel, so on admin pages it was just
+ * re-querying the whole DOM on every table/state update for nothing (this
+ * is what made admin tab switching and table interaction feel laggy).
  */
 export default function CompassCursor() {
+  const pathname = usePathname();
+  const isAdmin = pathname?.startsWith('/admin') ?? false;
+
   // Scroll-reveal must work on every device (mobile included), so it lives in
   // its own effect, independent of the cursor-follow effect below which is
   // intentionally skipped on touch/coarse-pointer devices.
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (isAdmin) return;
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduce) return;
 
@@ -45,10 +56,11 @@ export default function CompassCursor() {
       rx.disconnect();
       mo.disconnect();
     };
-  }, []);
+  }, [isAdmin]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (isAdmin) return;
     if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return;
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -152,7 +164,7 @@ export default function CompassCursor() {
       window.removeEventListener('mouseup', onUp);
       wrap.remove();
     };
-  }, []);
+  }, [isAdmin]);
 
   return null;
 }

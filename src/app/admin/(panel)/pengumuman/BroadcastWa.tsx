@@ -222,7 +222,7 @@ export default function BroadcastWa({ peserta, pengumuman }: { peserta: Peserta[
 
   return (
     <div>
-      <h2 style={{ fontFamily: 'var(--disp)', fontWeight: 400, fontSize: 18, letterSpacing: '-0.02em', margin: '0 0 6px' }}>
+      <h2 style={{ fontFamily: 'var(--disp)', fontWeight: 700, fontSize: 15, letterSpacing: '0.01em', margin: '0 0 6px' }}>
         Kirim Pengumuman ke Peserta
       </h2>
       <p style={{ fontSize: 13, color: '#5a554c', margin: '0 0 18px', maxWidth: '70ch' }}>

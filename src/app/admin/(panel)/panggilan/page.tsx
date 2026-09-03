@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import RuangPanggilanCard from './RuangPanggilanCard';
+import { PageHeader } from '../../ui';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,15 +12,17 @@ export default async function AdminPanggilanPage() {
 
   return (
     <div>
-      <h1 style={{ fontFamily: 'var(--disp)', fontWeight: 300, fontSize: 'clamp(28px,3vw,40px)', letterSpacing: '-0.04em', margin: '0 0 8px' }}>
-        Sidang Video (Jitsi Meet)
-      </h1>
-      <p style={{ fontSize: 14, color: '#5a554c', margin: '0 0 22px', maxWidth: '70ch' }}>
-        Ruang video call gratis (Jitsi Meet) untuk sesi juri menilai langsung. Peserta yang lolos syarat
-        masuk lewat satu ruang bersama per cabang, lalu dipanggil satu-satu oleh juri. Buka ruang saat
-        sesi akan dimulai, dan tutup kembali setelah selesai. Disarankan mengaktifkan fitur &quot;Lobby&quot;
-        (ruang tunggu) bawaan Jitsi begitu masuk sebagai panitia, untuk mencegah orang di luar peserta ikut masuk.
-      </p>
+      <PageHeader
+        title="Sidang Video (Jitsi Meet)"
+        description={
+          <>
+            Ruang video call gratis (Jitsi Meet) untuk sesi juri menilai langsung. Peserta yang lolos syarat
+            masuk lewat satu ruang bersama per cabang, lalu dipanggil satu-satu oleh juri. Buka ruang saat
+            sesi akan dimulai, dan tutup kembali setelah selesai. Disarankan mengaktifkan fitur &quot;Lobby&quot;
+            (ruang tunggu) bawaan Jitsi begitu masuk sebagai panitia, untuk mencegah orang di luar peserta ikut masuk.
+          </>
+        }
+      />
 
       <div style={{ display: 'grid', gap: 16 }}>
         <RuangPanggilanCard
