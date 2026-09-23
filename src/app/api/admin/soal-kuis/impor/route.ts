@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic';
 const VALID_JAWABAN = ['A', 'B', 'C', 'D'];
 
 // Format per baris: Soal|PilihanA|PilihanB|PilihanC|PilihanD|Jawaban|Kategori(opsional)
+// Baris yang disalin dari Excel (dipisah tab) juga diterima; baris judul dilewati.
 export async function POST(req: Request) {
   const session = await requireAdminSession();
   if (!session) return new NextResponse('Unauthorized', { status: 401 });
@@ -36,7 +37,8 @@ export async function POST(req: Request) {
   const gagal: { baris: number; alasan: string }[] = [];
 
   baris.forEach((line, idx) => {
-    const parts = line.split('|').map((p) => p.trim());
+    const parts = line.split(line.includes('\t') ? '\t' : '|').map((p) => p.trim());
+    if (idx === 0 && parts[5]?.toLowerCase() === 'jawaban') return;
     if (parts.length < 6) {
       gagal.push({ baris: idx + 1, alasan: 'Kolom kurang dari 6 (Soal|A|B|C|D|Jawaban).' });
       return;

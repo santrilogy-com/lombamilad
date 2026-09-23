@@ -74,6 +74,7 @@ export default function SoalKuisManager({
   const [tambah, setTambah] = useState({ soal: '', pilihanA: '', pilihanB: '', pilihanC: '', pilihanD: '', jawaban: 'A', kategori: '' });
   const [teksImpor, setTeksImpor] = useState('');
   const [hasilImpor, setHasilImpor] = useState<{ berhasil: number; gagal: { baris: number; alasan: string }[] } | null>(null);
+  const fileExcelRef = useRef<HTMLInputElement>(null);
   const [terpilih, setTerpilih] = useState<Set<string>>(new Set());
   const [konfirmasiHapusMassal, setKonfirmasiHapusMassal] = useState(false);
   const timerHapusMassalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -233,6 +234,31 @@ export default function SoalKuisManager({
     }
   }
 
+  // Baca file .xlsx di browser lalu ubah jadi baris dipisah tab di kotak impor,
+  // supaya admin bisa memeriksa isinya dulu sebelum menekan Impor.
+  async function bacaFileExcel(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setBusy(true);
+    setHasilImpor(null);
+    try {
+      const { readSheet } = await import('read-excel-file/browser');
+      const rows = await readSheet(file);
+      const baris = rows
+        .map((row) => row.map((c) => (c == null ? '' : String(c).replace(/[\t\r\n]+/g, ' ').trim())))
+        .filter((row) => row.some(Boolean))
+        .map((row) => row.join('\t'));
+      if (baris.length === 0) throw new Error('File Excel kosong.');
+      setTeksImpor(baris.join('\n'));
+      tampilkanPesan(`${baris.length} baris dibaca dari ${file.name}. Periksa lalu klik Impor.`);
+    } catch (err: any) {
+      tampilkanPesan(err?.message ? `Gagal membaca file Excel: ${err.message}` : 'Gagal membaca file Excel.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function imporMassal() {
     setBusy(true);
     setHasilImpor(null);
@@ -304,7 +330,27 @@ export default function SoalKuisManager({
         <h3 style={{ fontFamily: 'var(--disp)', fontWeight: 700, fontSize: 15, margin: '0 0 10px' }}>Impor soal massal</h3>
         <p style={{ fontSize: 12.5, color: '#5a554c', margin: '0 0 10px' }}>
           Satu baris per soal, format: <code>Soal|PilihanA|PilihanB|PilihanC|PilihanD|Jawaban|Kategori</code> (Kategori opsional).
+          Bisa juga mengunggah file Excel (.xlsx), atau menyalin baris dari Excel lalu menempelkannya di sini.
         </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 14, margin: '0 0 10px' }}>
+          <input
+            ref={fileExcelRef}
+            type="file"
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            onChange={bacaFileExcel}
+            style={{ display: 'none' }}
+          />
+          <button type="button" disabled={busy} onClick={() => fileExcelRef.current?.click()} style={btnStyle}>
+            Unggah file Excel
+          </button>
+          <a
+            href="/contoh-impor-soal.xlsx"
+            download
+            style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--olive)', textDecoration: 'underline' }}
+          >
+            Unduh contoh Excel
+          </a>
+        </div>
         <textarea
           value={teksImpor}
           onChange={(e) => setTeksImpor(e.target.value)}
