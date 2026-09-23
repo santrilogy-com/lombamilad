@@ -357,7 +357,7 @@ export const FASILITAS: { title: string; detail: string }[] = [
   { title: 'Konsumsi', detail: 'Makanan berat selama rangkaian kegiatan final.' },
 ];
 
-export const CONTACT_WA = ['087793808400', '087851800137'];
+export const CONTACT_WA = ['085349819005', '085807111227'];
 export const WEBSITE = 'miladsidogiri.id';
 export const SIDOGIRI_NET = 'sidogiri.net';
 
