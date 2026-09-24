@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAdminSession } from '@/lib/require-admin';
 import { prisma } from '@/lib/prisma';
-import { LOMBA } from '@/lib/data';
-import { kirimHasilEmail } from '@/lib/email';
+import { kirimHasilKePendaftar } from '@/lib/email';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,27 +26,8 @@ export async function POST(req: Request) {
   const gagal: { id: string; nama: string; error: string }[] = [];
 
   for (const p of peserta) {
-    if (!p.email) {
-      gagal.push({ id: p.id, nama: p.nama, error: 'Tidak ada alamat email.' });
-      continue;
-    }
     try {
-      await kirimHasilEmail({
-        to: p.email,
-        nama: p.nama,
-        cabang: LOMBA.find((c) => c.id === p.cabangId)?.short || p.cabangId,
-        cabangId: p.cabangId,
-        nomorPendaftaran: p.nomorPendaftaran,
-        tokenCek: p.tokenCek,
-        statusKode: p.status,
-        nilaiPenyisihan: p.nilai?.nilaiPenyisihan,
-        peringkatPenyisihan: p.nilai?.peringkatPenyisihan,
-        nilaiBabak2: p.nilai?.nilaiBabak2,
-        peringkatBabak2: p.nilai?.peringkatBabak2,
-        nilaiFinal: p.nilai?.nilaiFinal,
-        peringkatFinal: p.nilai?.peringkatFinal,
-        baseUrl,
-      });
+      await kirimHasilKePendaftar(p, baseUrl);
       terkirim.push(p.id);
     } catch (err: any) {
       gagal.push({ id: p.id, nama: p.nama, error: err?.message || 'Gagal mengirim.' });

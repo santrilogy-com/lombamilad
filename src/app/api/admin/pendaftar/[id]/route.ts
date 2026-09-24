@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAdminSession } from '@/lib/require-admin';
 import { prisma } from '@/lib/prisma';
 import { deleteFile } from '@/lib/storage';
+import { kirimHasilKePendaftar, statusPunyaEmailHasil } from '@/lib/email';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -95,7 +96,25 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     include: { nilai: true },
   });
 
-  return NextResponse.json({ success: true, pendaftar: updated });
+  // Email otomatis ke peserta setiap kali statusnya benar-benar berubah. Di-await
+  // (bukan fire-and-forget) karena fungsi serverless bisa dibekukan begitu response
+  // dikirim; kegagalan SMTP tidak menggagalkan penyimpanan status, hanya dilaporkan.
+  let email: 'terkirim' | 'gagal' | 'tidak-ada-email' | null = null;
+  if (updated && patch.status && patch.status !== pendaftar.status && statusPunyaEmailHasil(patch.status)) {
+    if (!updated.email) {
+      email = 'tidak-ada-email';
+    } else {
+      try {
+        await kirimHasilKePendaftar(updated, new URL(req.url).origin);
+        email = 'terkirim';
+      } catch (err) {
+        console.error('Email perubahan status gagal', err);
+        email = 'gagal';
+      }
+    }
+  }
+
+  return NextResponse.json({ success: true, pendaftar: updated, email });
 }
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {

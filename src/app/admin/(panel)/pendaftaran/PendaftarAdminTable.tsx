@@ -126,8 +126,13 @@ export default function PendaftarAdminTable({
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'Gagal');
       setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patchRow(data.pendaftar) } : r)));
-      setMsg({ id, text: 'Tersimpan' });
-      setTimeout(() => setMsg(null), 2000);
+      const infoEmail =
+        data.email === 'terkirim' ? ' · email terkirim'
+        : data.email === 'gagal' ? ' · email GAGAL terkirim'
+        : data.email === 'tidak-ada-email' ? ' · tanpa email (peserta tidak isi email)'
+        : '';
+      setMsg({ id, text: `Tersimpan${infoEmail}` });
+      setTimeout(() => setMsg(null), infoEmail ? 4000 : 2000);
     } catch (e: any) {
       setMsg({ id, text: e.message || 'Gagal' });
       setTimeout(() => setMsg(null), 3000);
@@ -212,7 +217,7 @@ export default function PendaftarAdminTable({
                 onPilih={() => toggleTerpilih(r.id)}
                 onStatus={(status) => update(r.id, { status })}
                 onVerify={() => update(r.id, { status: 'TERVERIFIKASI' })}
-                onReject={() => update(r.id, { status: 'DITOLAK' })}
+                onReject={(c) => update(r.id, { status: 'DITOLAK', verifikasiCatatan: c })}
                 onCatatan={(c) => update(r.id, { verifikasiCatatan: c })}
                 onHapus={() => hapusSatu(r.id)}
                 konfirmasiHapus={konfirmasiHapusId === r.id}
@@ -246,7 +251,7 @@ function PendaftarRow({
   onPilih: () => void;
   onStatus: (s: string) => void;
   onVerify: () => void;
-  onReject: () => void;
+  onReject: (catatan: string) => void;
   onCatatan: (c: string) => void;
   onHapus: () => void;
   konfirmasiHapus: boolean;
@@ -324,7 +329,7 @@ function PendaftarRow({
             Verifikasi
           </button>
           <button
-            onClick={onReject}
+            onClick={() => onReject(catatan)}
             disabled={busy}
             style={{ height: 32, padding: '0 12px', background: '#a94442', color: '#fff', border: 0, borderRadius: 2, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
           >

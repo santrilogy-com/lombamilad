@@ -25,13 +25,19 @@ export async function POST() {
   const gugur = daftar.slice(JUMLAH_FINALIST);
   const belumDinilai = peserta.filter((p) => p.nilai?.nilaiBabak2 === null || p.nilai?.nilaiBabak2 === undefined).length;
 
+  // Peserta yang statusnya benar-benar berubah — klien mengirimi mereka email hasil
+  // otomatis (bertahap per batch lewat /api/admin/penilaian/kirim-hasil).
+  const berubah: string[] = [];
+
   await prisma.$transaction(async (tx) => {
     for (let i = 0; i < daftar.length; i++) {
       const p = daftar[i];
       const top = i < JUMLAH_FINALIST;
+      const statusBaru = top ? 'LOLOS_FINAL' : 'GUGUR_PENYISIHAN';
+      if (statusBaru !== p.status) berubah.push(p.id);
       await tx.pendaftar.update({
         where: { id: p.id },
-        data: { status: top ? 'LOLOS_FINAL' : 'GUGUR_PENYISIHAN' },
+        data: { status: statusBaru },
       });
       await tx.nilai.update({
         where: { pendaftarId: p.id },
@@ -42,6 +48,7 @@ export async function POST() {
 
   return NextResponse.json({
     ok: true,
+    berubah,
     lolos: lolos.map((p) => p.nomorPendaftaran),
     gugur: gugur.map((p) => p.nomorPendaftaran),
     belumDinilai,

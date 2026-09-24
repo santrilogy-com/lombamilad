@@ -24,6 +24,10 @@ export async function POST() {
 
   const result: Record<string, { lolos: string[]; gugur: string[]; belumDinilai: number }> = {};
 
+  // Peserta yang statusnya benar-benar berubah — klien mengirimi mereka email hasil
+  // otomatis (bertahap per batch lewat /api/admin/penilaian/kirim-hasil).
+  const berubah: string[] = [];
+
   for (const cid of cabangIds) {
     const daftar = peserta
       .filter((p) => p.cabangId === cid && p.nilai?.nilaiPenyisihan !== null)
@@ -37,9 +41,11 @@ export async function POST() {
       for (let i = 0; i < daftar.length; i++) {
         const p = daftar[i];
         const top = i < JUMLAH_FINALIST;
+        const statusBaru = top ? 'LOLOS_PENYISIHAN' : 'GUGUR_PENYISIHAN';
+        if (statusBaru !== p.status) berubah.push(p.id);
         await tx.pendaftar.update({
           where: { id: p.id },
-          data: { status: top ? 'LOLOS_PENYISIHAN' : 'GUGUR_PENYISIHAN' },
+          data: { status: statusBaru },
         });
         if (p.nilai) {
           await tx.nilai.update({
@@ -53,5 +59,5 @@ export async function POST() {
     result[cid] = { lolos: lolos.map((p) => p.nomorPendaftaran), gugur: gugur.map((p) => p.nomorPendaftaran), belumDinilai };
   }
 
-  return NextResponse.json({ ok: true, result });
+  return NextResponse.json({ ok: true, berubah, result });
 }

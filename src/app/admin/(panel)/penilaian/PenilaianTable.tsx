@@ -93,11 +93,12 @@ export default function PenilaianTable({
       const res = await fetch('/api/admin/penilaian/proses-lulus', { method: 'POST' });
       const data = await res.json();
       if (data?.ok) {
-        setMsg('Kelulusan berhasil diproses. Muat ulang halaman untuk melihat hasil.');
+        const infoEmail = await kirimEmailStatusBerubah(data.berubah || []);
+        setMsg(`Kelulusan berhasil diproses. ${infoEmail} Muat ulang halaman untuk melihat hasil.`);
       } else {
         setMsg(data?.error || 'Gagal memproses');
       }
-      setTimeout(() => setMsg(''), 4000);
+      setTimeout(() => setMsg(''), 8000);
     } finally {
       setBusy(false);
     }
@@ -112,17 +113,54 @@ export default function PenilaianTable({
       const res = await fetch(`/api/admin/kuis/proses-${tahap}`, { method: 'POST' });
       const data = await res.json();
       if (data?.ok) {
-        setMsg('Berhasil diproses. Muat ulang halaman untuk melihat hasil.');
+        const infoEmail = await kirimEmailStatusBerubah(data.berubah || []);
+        setMsg(`Berhasil diproses. ${infoEmail} Muat ulang halaman untuk melihat hasil.`);
       } else {
         setMsg(data?.error || 'Gagal memproses');
       }
-      setTimeout(() => setMsg(''), 4000);
+      setTimeout(() => setMsg(''), 8000);
     } finally {
       setBusy(false);
     }
   }
 
   const UKURAN_BATCH = 15;
+
+  // Setelah proses massal mengubah status, kirim email hasil otomatis ke setiap
+  // peserta yang statusnya berubah — per batch supaya tiap request tetap singkat.
+  async function kirimEmailStatusBerubah(ids: string[]): Promise<string> {
+    if (ids.length === 0) return 'Tidak ada status yang berubah, tidak ada email dikirim.';
+    let terkirim = 0;
+    let tanpaEmail = 0;
+    let gagal = 0;
+    for (let i = 0; i < ids.length; i += UKURAN_BATCH) {
+      const batch = ids.slice(i, i + UKURAN_BATCH);
+      setMsg(`Status diperbarui. Mengirim email hasil ${Math.min(i + UKURAN_BATCH, ids.length)}/${ids.length}...`);
+      try {
+        const res = await fetch('/api/admin/penilaian/kirim-hasil', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pesertaIds: batch }),
+        });
+        const data = await res.json();
+        const berhasilSet = new Set<string>(data.terkirim || []);
+        terkirim += berhasilSet.size;
+        for (const g of data.gagal || []) {
+          if (g.error === 'Tidak ada alamat email.') tanpaEmail++;
+          else gagal++;
+        }
+        setStatusHasil((s) => {
+          const next = { ...s };
+          batch.forEach((id) => { next[id] = berhasilSet.has(id) ? 'terkirim' : 'gagal'; });
+          return next;
+        });
+      } catch {
+        gagal += batch.length;
+      }
+    }
+    return `Email hasil: ${terkirim} terkirim${tanpaEmail ? `, ${tanpaEmail} tanpa email` : ''}${gagal ? `, ${gagal} GAGAL (kirim ulang lewat tombol Kirim Hasil)` : ''}.`;
+  }
+
 
   async function kirimHasilKeCabang(cid: string, peserta: Row[]) {
     const target = peserta.filter((p) => p.email && (p.nilaiPenyisihan !== null || p.nilaiBabak2 !== null || p.nilaiFinal !== null));

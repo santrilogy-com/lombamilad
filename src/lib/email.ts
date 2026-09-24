@@ -5,6 +5,7 @@
  */
 
 import nodemailer from 'nodemailer';
+import { LOMBA } from '@/lib/data';
 
 type EmailPayload = {
   to: string;
@@ -210,6 +211,7 @@ export async function kirimHasilEmail(opts: {
   peringkatBabak2?: number | null;
   nilaiFinal?: number | null;
   peringkatFinal?: number | null;
+  catatan?: string | null;
   baseUrl: string;
 }): Promise<{ messageId: string }> {
   const { to, nama, cabang, cabangId, nomorPendaftaran, tokenCek, statusKode, baseUrl } = opts;
@@ -253,10 +255,62 @@ export async function kirimHasilEmail(opts: {
       ${baris('Nilai Penyisihan', opts.nilaiPenyisihan, opts.peringkatPenyisihan)}
       ${baris('Nilai Babak II', opts.nilaiBabak2, opts.peringkatBabak2)}
       ${baris('Nilai Final', opts.nilaiFinal, opts.peringkatFinal)}
+      ${
+        opts.catatan
+          ? `<div style="background:#fff;border-radius:6px;padding:16px 18px;margin:0 0 18px;">
+              <div style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#7c7b77;">Catatan Panitia</div>
+              <p style="font-size:13.5px;line-height:1.6;margin:6px 0 0;">${escapeHtml(opts.catatan)}</p>
+            </div>`
+          : ''
+      }
       ${infoSidangMqkBabak2}
       <a href="${baseUrl}/cek-status" style="display:inline-block;background:#24211c;color:#efede7;text-decoration:none;padding:12px 20px;border-radius:4px;font-size:14px;font-weight:600;margin-top:8px;">Buka Dashboard Peserta</a>
       <p style="font-size:12px;color:#7c7b77;margin-top:24px;">Keputusan dewan juri bersifat final. Email ini dikirim otomatis oleh panitia.</p>
     `
   );
   return kirimEmailAtauLempar({ to, subject: `Update Hasil Seleksi — ${info.label}`, html });
+}
+/** Status yang punya email hasil — MENUNGGU_VERIFIKASI (status awal) tidak dikirimi apa-apa. */
+export function statusPunyaEmailHasil(status: string): boolean {
+  return status in HASIL_LABEL;
+}
+
+type PendaftarUntukEmail = {
+  email: string | null;
+  nama: string;
+  cabangId: string;
+  nomorPendaftaran: string;
+  tokenCek: string;
+  status: string;
+  verifikasiCatatan: string | null;
+  nilai: {
+    nilaiPenyisihan: number | null;
+    peringkatPenyisihan: number | null;
+    nilaiBabak2: number | null;
+    peringkatBabak2: number | null;
+    nilaiFinal: number | null;
+    peringkatFinal: number | null;
+  } | null;
+};
+
+/** Kirim email hasil/status terkini seorang pendaftar. Melempar error bila gagal atau tidak ada email. */
+export async function kirimHasilKePendaftar(p: PendaftarUntukEmail, baseUrl: string): Promise<{ messageId: string }> {
+  if (!p.email) throw new Error('Tidak ada alamat email.');
+  return kirimHasilEmail({
+    to: p.email,
+    nama: p.nama,
+    cabang: LOMBA.find((c) => c.id === p.cabangId)?.short || p.cabangId,
+    cabangId: p.cabangId,
+    nomorPendaftaran: p.nomorPendaftaran,
+    tokenCek: p.tokenCek,
+    statusKode: p.status,
+    nilaiPenyisihan: p.nilai?.nilaiPenyisihan,
+    peringkatPenyisihan: p.nilai?.peringkatPenyisihan,
+    nilaiBabak2: p.nilai?.nilaiBabak2,
+    peringkatBabak2: p.nilai?.peringkatBabak2,
+    nilaiFinal: p.nilai?.nilaiFinal,
+    peringkatFinal: p.nilai?.peringkatFinal,
+    catatan: p.verifikasiCatatan,
+    baseUrl,
+  });
 }
