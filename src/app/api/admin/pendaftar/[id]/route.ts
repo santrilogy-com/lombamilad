@@ -106,10 +106,11 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   const pendaftar = await prisma.pendaftar.findUnique({ where: { id } });
   if (!pendaftar) return NextResponse.json({ error: 'Pendaftar tidak ditemukan' }, { status: 404 });
 
-  // Hapus baris anak dulu (Nilai/KuisAttempt tidak punya onDelete: Cascade di
-  // schema) baru baris Pendaftar-nya, dalam satu transaksi supaya konsisten.
+  // Hapus baris anak dulu (Nilai/KuisAttempt/KuisAktivitas tidak punya onDelete:
+  // Cascade di schema) baru baris Pendaftar-nya, dalam satu transaksi supaya konsisten.
   await prisma.$transaction([
     prisma.nilai.deleteMany({ where: { pendaftarId: id } }),
+    prisma.kuisAktivitas.deleteMany({ where: { attempt: { pendaftarId: id } } }),
     prisma.kuisAttempt.deleteMany({ where: { pendaftarId: id } }),
     prisma.pendaftar.delete({ where: { id } }),
   ]);
