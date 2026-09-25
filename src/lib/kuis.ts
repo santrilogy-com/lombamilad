@@ -4,7 +4,7 @@ import type { Pendaftar, KuisAttempt, SoalKuis } from '@prisma/client';
 export const DETIK_PER_SOAL = 15;
 const GRACE_MS = 2000;
 
-export const TIPE_AKTIVITAS_MENCURIGAKAN = ['tab', 'fokus', 'resize', 'fullscreen', 'kamera', 'lain'] as const;
+export const TIPE_AKTIVITAS_MENCURIGAKAN = ['tab', 'fokus', 'resize', 'fullscreen', 'kamera', 'layar', 'lain'] as const;
 export type TipeAktivitasMencurigakan = (typeof TIPE_AKTIVITAS_MENCURIGAKAN)[number];
 export const LABEL_AKTIVITAS_MENCURIGAKAN: Record<TipeAktivitasMencurigakan, string> = {
   tab: 'Berpindah tab',
@@ -12,6 +12,7 @@ export const LABEL_AKTIVITAS_MENCURIGAKAN: Record<TipeAktivitasMencurigakan, str
   resize: 'Jendela menyempit (mis. panel/DevTools)',
   fullscreen: 'Keluar dari layar penuh',
   kamera: 'Kamera terputus',
+  layar: 'Berhenti membagikan layar',
   lain: 'Aktivitas lain',
 };
 

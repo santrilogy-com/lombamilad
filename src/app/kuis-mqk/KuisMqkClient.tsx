@@ -81,13 +81,26 @@ export default function KuisMqkClient() {
   // peringatan "tidak layar penuh" yang mustahil dipenuhi peserta di sana.
   const [fullscreenDidukung, setFullscreenDidukung] = useState(true);
 
+  // Modal persetujuan pengawasan (kamera + berbagi layar) sebelum kuis dimulai/dilanjutkan.
+  const [modalPersetujuan, setModalPersetujuan] = useState(false);
+  const [setuju, setSetuju] = useState(false);
+  const [kameraSiap, setKameraSiap] = useState(false);
+  const [layarAktif, setLayarAktif] = useState(false);
+  const [layarError, setLayarError] = useState('');
+  // Berbagi layar (getDisplayMedia) hanya ada di peramban desktop; Chrome Android &
+  // Safari iOS tidak menyediakannya untuk halaman web, jadi di sana tidak diwajibkan.
+  const [layarDidukung, setLayarDidukung] = useState(false);
+  const layarRef = useRef<MediaStream | null>(null);
+  const stepRef = useRef<Step>('login');
+  const lapoLayarRef = useRef(0);
+
   function tampilkanToast(pesan: string) {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast(pesan);
     toastTimerRef.current = setTimeout(() => setToast(''), 1800);
   }
 
-  function laporMencurigakan(tipe: 'tab' | 'fokus' | 'resize' | 'fullscreen' | 'kamera') {
+  function laporMencurigakan(tipe: 'tab' | 'fokus' | 'resize' | 'fullscreen' | 'kamera' | 'layar') {
     const { nomor: n, token: t } = credRef.current;
     if (!n || !t) return;
     // keepalive wajib: laporan 'tab' dikirim tepat saat halaman disembunyikan,
@@ -130,6 +143,110 @@ export default function KuisMqkClient() {
       setError('Akses kamera diperlukan untuk memulai kuis ini (verifikasi wajah). Izinkan akses kamera pada peramban Anda, lalu coba lagi.');
       return false;
     }
+  }
+
+  // Minta peserta membagikan SELURUH layar (bukan satu tab/jendela). Wajib dipanggil
+  // langsung dari klik tombol — getDisplayMedia menolak dipanggil tanpa gesture.
+  // Layar tidak direkam/disimpan; hanya dipastikan tetap dibagikan selama kuis.
+  async function bagikanLayar() {
+    setLayarError('');
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { displaySurface: 'monitor' },
+        audio: false,
+        // Opsi Chrome: sembunyikan pilihan tab/jendela sendiri & pengalihan sumber di tengah jalan.
+        selfBrowserSurface: 'exclude',
+        surfaceSwitching: 'exclude',
+        monitorTypeSurfaces: 'include',
+      } as DisplayMediaStreamOptions);
+      const track = stream.getVideoTracks()[0];
+      const surface = (track?.getSettings() as { displaySurface?: string }).displaySurface;
+      if (surface && surface !== 'monitor') {
+        stream.getTracks().forEach((t) => t.stop());
+        setLayarError('Pilih "Seluruh layar" (Entire screen), bukan satu tab atau jendela, lalu coba lagi.');
+        return;
+      }
+      layarRef.current?.getTracks().forEach((t) => {
+        t.onended = null;
+        t.stop();
+      });
+      layarRef.current = stream;
+      track.onended = () => {
+        layarRef.current = null;
+        setLayarAktif(false);
+        if (stepRef.current !== 'sedang') return;
+        const now = Date.now();
+        if (now - lapoLayarRef.current < 3000) return;
+        lapoLayarRef.current = now;
+        tampilkanToast('Berbagi layar dihentikan — aktivitas ini tercatat');
+        laporMencurigakan('layar');
+      };
+      setLayarAktif(true);
+    } catch (err: any) {
+      if (err?.name === 'NotSupportedError' || err?.name === 'TypeError') {
+        setLayarDidukung(false);
+        return;
+      }
+      setLayarError('Berbagi layar dibatalkan atau ditolak. Klik "Bagikan Layar" lalu pilih "Seluruh layar".');
+    }
+  }
+
+  function hentikanLayar() {
+    layarRef.current?.getTracks().forEach((t) => {
+      t.onended = null;
+      t.stop();
+    });
+    layarRef.current = null;
+    setLayarAktif(false);
+  }
+
+  async function izinkanKamera() {
+    setError('');
+    const ok = await mintaKamera();
+    setKameraSiap(ok);
+  }
+
+  // Sebelum memulai/melanjutkan kuis, cek status dulu: peserta yang kuisnya sudah
+  // selesai (atau belum boleh mulai) langsung diteruskan ke mulai() untuk melihat
+  // hasil/pesan dari server, tanpa diminta persetujuan kamera & layar.
+  async function bukaPersetujuan(nomorArg?: string, tokenArg?: string) {
+    const n = (nomorArg ?? nomor).trim();
+    const t = (tokenArg ?? token).trim();
+    if (!n || !t) return;
+    setError('');
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/cek-status?${new URLSearchParams({ nomor: n, token: t })}`);
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || 'Nomor pendaftaran atau token tidak cocok.');
+      const kuis = data?.kuis as { attemptStatus: string | null; dibuka: boolean } | null;
+      const bisaMengerjakan =
+        kuis &&
+        (kuis.attemptStatus === 'SEDANG' ||
+          (kuis.attemptStatus === null && kuis.dibuka && data.statusKode === 'TERVERIFIKASI'));
+      if (!bisaMengerjakan) {
+        setBusy(false);
+        await mulai(n, t);
+        return;
+      }
+      setNomor(n);
+      setToken(t);
+      setSetuju(false);
+      setLayarError('');
+      setKameraSiap(Boolean(streamRef.current?.getVideoTracks().some((tr) => tr.readyState === 'live')));
+      setLayarDidukung(typeof navigator.mediaDevices?.getDisplayMedia === 'function');
+      setModalPersetujuan(true);
+    } catch (err: any) {
+      setError(err?.message || 'Terjadi kesalahan.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function setujuDanMulai() {
+    setModalPersetujuan(false);
+    mintaFullscreen();
+    mulai();
   }
 
   function hentikanKamera() {
@@ -306,11 +423,12 @@ export default function KuisMqkClient() {
     }
   }
 
-  // Auto-mulai bila nomor & token dibawa lewat URL (mis. tautan dari Dashboard Peserta).
+  // Bila nomor & token dibawa lewat URL (mis. tautan dari Dashboard Peserta), langsung
+  // tampilkan persetujuan pengawasan (atau hasil, bila kuis sudah selesai).
   useEffect(() => {
     const n = searchParams.get('nomor');
     const t = searchParams.get('token');
-    if (n && t) mulai(n, t);
+    if (n && t) bukaPersetujuan(n, t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -408,11 +526,21 @@ export default function KuisMqkClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, nomorSoal, total]);
 
-  // Matikan kamera begitu kuis selesai atau komponen dilepas.
+  // Matikan kamera & berbagi layar begitu kuis selesai atau komponen dilepas.
   useEffect(() => {
-    if (step === 'selesai') hentikanKamera();
+    stepRef.current = step;
+    if (step === 'selesai') {
+      hentikanKamera();
+      hentikanLayar();
+    }
   }, [step]);
-  useEffect(() => () => hentikanKamera(), []);
+  useEffect(
+    () => () => {
+      hentikanKamera();
+      hentikanLayar();
+    },
+    []
+  );
 
   // Lapor bila peserta pindah tab / minimize saat kuis berlangsung, dan beri
   // tahu peserta secara terbuka bahwa ini tercatat (bukan diam-diam).
@@ -583,16 +711,17 @@ export default function KuisMqkClient() {
             per soal, tidak bisa kembali ke soal sebelumnya, dan kuis hanya dapat dikerjakan satu kali.
             Pastikan koneksi internet stabil sebelum memulai — jangan tutup atau muat ulang halaman
             selama kuis berlangsung. Kuis akan berjalan dalam mode layar penuh. Sistem memantau
-            berbagai aktivitas selama kuis berlangsung (berpindah tab, membuka panel/DevTools, keluar
-            dari layar penuh, kamera terputus); tindakan yang dianggap mencurigakan akan tercatat dan
-            dapat memengaruhi kelulusan Anda.
+            berbagai aktivitas selama kuis berlangsung (berpindah tab/jendela, membuka panel/DevTools,
+            keluar dari layar penuh, kamera terputus, berhenti membagikan layar); tindakan yang dianggap
+            mencurigakan akan tercatat dan dapat memengaruhi kelulusan Anda.
           </p>
           <p style={{ fontSize: 14, lineHeight: 1.6, color: '#4b4740', margin: '0 0 32px', background: 'var(--paper2)', borderRadius: 3, padding: '14px 16px' }}>
             Kuis ini memerlukan akses kamera untuk verifikasi wajah selama kuis berlangsung, guna
-            memastikan peserta yang mengerjakan adalah Anda sendiri (bukan joki). Pastikan kamera
-            tetap aktif dan wajah Anda terlihat jelas sepanjang kuis.
+            memastikan peserta yang mengerjakan adalah Anda sendiri (bukan joki). Bila mengerjakan dari
+            laptop/PC, Anda juga diminta membagikan seluruh layar selama kuis. Pastikan kamera tetap
+            aktif dan wajah Anda terlihat jelas sepanjang kuis.
           </p>
-          <form onSubmit={(e) => { e.preventDefault(); mintaFullscreen(); mulai(); }} style={{ display: 'grid', gap: 16 }}>
+          <form onSubmit={(e) => { e.preventDefault(); bukaPersetujuan(); }} style={{ display: 'grid', gap: 16 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <label htmlFor="nomor" style={labelStyle}>Nomor pendaftaran</label>
               <input id="nomor" value={nomor} onChange={(e) => setNomor(e.target.value)} placeholder="MS290-MQK-????" style={inputStyle} required />
@@ -633,6 +762,43 @@ export default function KuisMqkClient() {
             ● KAMERA AKTIF
           </span>
         </div>
+      ) : null}
+
+      {step === 'sedang' && layarDidukung && !layarAktif ? (
+        <div style={{ display: 'grid', gap: 8, background: '#f4dede', borderLeft: '3px solid #a94442', borderRadius: 2, padding: '12px 16px', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <span style={{ fontSize: 13, color: '#7a2f2d' }}>Layar Anda tidak sedang dibagikan — aktivitas ini tercatat.</span>
+            <button
+              type="button"
+              onClick={bagikanLayar}
+              style={{ flexShrink: 0, height: 32, padding: '0 14px', background: '#a94442', color: '#fff', border: 0, borderRadius: 2, fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
+            >
+              Bagikan Layar
+            </button>
+          </div>
+          {layarError ? <span style={{ fontSize: 12.5, color: '#7a2f2d' }}>{layarError}</span> : null}
+        </div>
+      ) : null}
+
+      {modalPersetujuan ? (
+        <ModalPersetujuan
+          setuju={setuju}
+          onSetuju={setSetuju}
+          kameraSiap={kameraSiap}
+          onIzinkanKamera={izinkanKamera}
+          layarDidukung={layarDidukung}
+          layarAktif={layarAktif}
+          layarError={layarError}
+          onBagikanLayar={bagikanLayar}
+          error={error}
+          onMulai={setujuDanMulai}
+          onBatal={() => {
+            setModalPersetujuan(false);
+            hentikanKamera();
+            hentikanLayar();
+            setKameraSiap(false);
+          }}
+        />
       ) : null}
 
       {step === 'sedang' && fullscreenDidukung && !fullscreenAktif ? (
@@ -723,5 +889,117 @@ export default function KuisMqkClient() {
         </div>
       ) : null}
     </main>
+  );
+}
+
+// Persetujuan pengawasan sebelum kuis: jelaskan apa yang dipantau, minta
+// centang persetujuan, lalu izin kamera dan (di laptop/PC) berbagi seluruh layar.
+// Tombol mulai baru aktif setelah semua syarat terpenuhi.
+function ModalPersetujuan(props: {
+  setuju: boolean;
+  onSetuju: (v: boolean) => void;
+  kameraSiap: boolean;
+  onIzinkanKamera: () => void;
+  layarDidukung: boolean;
+  layarAktif: boolean;
+  layarError: string;
+  onBagikanLayar: () => void;
+  error: string;
+  onMulai: () => void;
+  onBatal: () => void;
+}) {
+  const siap = props.setuju && props.kameraSiap && (!props.layarDidukung || props.layarAktif);
+  const tombolLangkah = (selesai: boolean) =>
+    ({
+      height: 36,
+      padding: '0 16px',
+      background: selesai ? '#dbeedb' : 'var(--ink)',
+      color: selesai ? '#2e5d2e' : 'var(--paper)',
+      border: 0,
+      borderRadius: 2,
+      fontSize: 13,
+      fontWeight: 600,
+      cursor: selesai ? 'default' : 'pointer',
+      flexShrink: 0,
+    }) as const;
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="judul-persetujuan"
+      style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(36,33,28,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+    >
+      <div style={{ background: 'var(--paper)', borderRadius: 4, width: '100%', maxWidth: 560, maxHeight: '100%', overflowY: 'auto', padding: 'clamp(20px, 4vw, 32px)', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--olive)' }}>Sebelum memulai</div>
+        <h2 id="judul-persetujuan" style={{ fontFamily: 'var(--disp)', fontWeight: 400, fontSize: 24, letterSpacing: '-0.02em', margin: '8px 0 12px' }}>
+          Persetujuan Pengawasan Kuis
+        </h2>
+        <p style={{ fontSize: 14, lineHeight: 1.6, color: '#4b4740', margin: '0 0 10px' }}>
+          Untuk menjaga kejujuran dan keadilan bagi seluruh peserta, selama kuis berlangsung:
+        </p>
+        <ul style={{ fontSize: 13.5, lineHeight: 1.6, color: '#4b4740', margin: '0 0 14px', paddingLeft: 20 }}>
+          <li>Kamera harus aktif; sistem mengambil dua foto wajah (awal dan menjelang akhir) untuk verifikasi.</li>
+          {props.layarDidukung ? (
+            <li>Anda wajib membagikan <b>seluruh layar</b>. Layar hanya dipastikan tetap dibagikan &mdash; tidak direkam dan tidak disimpan.</li>
+          ) : null}
+          <li>
+            Aktivitas berikut tercatat dan dapat memengaruhi kelulusan: berpindah tab/aplikasi atau jendela, keluar dari layar penuh,
+            membuka panel/DevTools, kamera terputus{props.layarDidukung ? ', dan berhenti membagikan layar' : ''}.
+          </li>
+        </ul>
+        {!props.layarDidukung ? (
+          <p style={{ fontSize: 12.5, lineHeight: 1.55, color: '#5a554c', background: 'var(--paper2)', borderRadius: 3, padding: '10px 12px', margin: '0 0 14px' }}>
+            Anda mengerjakan dari HP/tablet. Seluruh aktivitas pada perangkat ini selama kuis tetap dipantau &mdash; berpindah
+            aplikasi, menutup halaman, atau kamera terputus akan langsung tercatat dan dilaporkan kepada panitia.
+          </p>
+        ) : null}
+
+        <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 13.5, lineHeight: 1.55, color: 'var(--ink)', margin: '0 0 18px', cursor: 'pointer' }}>
+          <input type="checkbox" checked={props.setuju} onChange={(e) => props.onSetuju(e.target.checked)} style={{ marginTop: 3 }} />
+          <span>
+            Saya memahami dan menyetujui pengawasan di atas, serta akan mengerjakan kuis secara jujur tanpa bantuan orang lain maupun
+            alat atau aplikasi lain.
+          </span>
+        </label>
+
+        <div style={{ display: 'grid', gap: 10, marginBottom: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <span style={{ fontSize: 13.5 }}>1. Izinkan akses kamera</span>
+            <button type="button" onClick={props.onIzinkanKamera} disabled={props.kameraSiap} style={tombolLangkah(props.kameraSiap)}>
+              {props.kameraSiap ? '✓ Kamera aktif' : 'Izinkan Kamera'}
+            </button>
+          </div>
+          {props.layarDidukung ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <span style={{ fontSize: 13.5 }}>2. Bagikan seluruh layar</span>
+              <button type="button" onClick={props.onBagikanLayar} disabled={props.layarAktif} style={tombolLangkah(props.layarAktif)}>
+                {props.layarAktif ? '✓ Layar dibagikan' : 'Bagikan Layar'}
+              </button>
+            </div>
+          ) : null}
+          {props.layarError ? <div style={{ fontSize: 12.5, color: '#a94442' }}>{props.layarError}</div> : null}
+          {props.error ? <div style={{ fontSize: 12.5, color: '#a94442' }}>{props.error}</div> : null}
+        </div>
+
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={props.onMulai}
+            disabled={!siap}
+            style={{ height: 48, padding: '0 24px', background: siap ? 'var(--ink)' : 'rgba(36,33,28,0.3)', color: 'var(--paper)', border: 0, borderRadius: 2, fontSize: 14, fontWeight: 600, cursor: siap ? 'pointer' : 'not-allowed' }}
+          >
+            Setuju &amp; Mulai Kuis
+          </button>
+          <button
+            type="button"
+            onClick={props.onBatal}
+            style={{ height: 48, padding: '0 20px', background: 'transparent', border: '1px solid rgba(36,33,28,0.25)', borderRadius: 2, fontSize: 14, fontWeight: 600, color: 'var(--ink)', cursor: 'pointer' }}
+          >
+            Batal
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
