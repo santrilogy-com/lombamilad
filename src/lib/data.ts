@@ -363,6 +363,15 @@ export const SIDOGIRI_NET = 'sidogiri.net';
 
 export const DEADLINE_MAIN = new Date('2026-10-28T23:59:59+07:00').getTime();
 
+// Batas akhir pengiriman naskah/video per cabang (akhir hari WIB), sesuai
+// ketentuan di LOMBA di atas. Hanya cabang berbasis karya yang ada di sini —
+// MQK (kuis) dan MTQ (sidang video) tidak punya berkas submisi.
+export const BATAS_SUBMISI: Record<string, string> = {
+  puisi: '2026-11-09T23:59:59+07:00',
+  khitobah: '2026-10-28T23:59:59+07:00',
+  syair: '2026-10-28T23:59:59+07:00',
+};
+
 export const STATS = [
   { label: 'Cabang lomba nasional', value: '5' },
   { label: 'Kuota peserta per lomba', value: '100' },

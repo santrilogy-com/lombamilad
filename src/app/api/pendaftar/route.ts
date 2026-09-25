@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { pendaftarSchema, normalisasiLinkYoutube, hitungUsia, MAX_USIA_TIAP_CABANG, buatNomorPendaftaran, buatToken } from '@/lib/validation';
-import { saveFile, terimaUnggahanSubmisi, unggahLangsungTersedia } from '@/lib/storage';
+import { pendaftarSchema, hitungUsia, MAX_USIA_TIAP_CABANG, buatNomorPendaftaran, buatToken } from '@/lib/validation';
+import { saveFile } from '@/lib/storage';
+import { simpanBerkasSubmisi, validasiLinkSubmisi } from '@/lib/submisi';
 import { rateLimit, ipFromRequest } from '@/lib/rate-limit';
 import { LOMBA } from '@/lib/data';
 import { kirimKonfirmasiPendaftar } from '@/lib/email';
@@ -65,10 +66,6 @@ export async function POST(req: Request) {
     const form = await req.formData();
 
     const fileIdentitas = form.get('fileIdentitas');
-    const fileSubmisi = form.get('fileSubmisi');
-    // Diisi bila submisi sudah diunggah langsung ke R2 (lihat /api/pendaftar/unggah-submisi).
-    const submisiKey = String(form.get('submisiKey') || '').trim();
-    const linkSubmisiMentah = String(form.get('linkSubmisi') || '').trim();
 
     const parsed = pendaftarSchema.safeParse({
       cabang: form.get('cabang'),
@@ -104,15 +101,11 @@ export async function POST(req: Request) {
     }
 
     // Link YouTube: alternatif unggah video, hanya untuk cabang berbasis video.
-    let linkSubmisi: string | null = null;
-    if (linkSubmisiMentah && d.cabang === 'khitobah') {
-      linkSubmisi = normalisasiLinkYoutube(linkSubmisiMentah);
-      if (!linkSubmisi) {
-        return NextResponse.json(
-          { error: 'Link video harus berupa link YouTube (youtube.com atau youtu.be).' },
-          { status: 400 }
-        );
-      }
+    let linkSubmisi: string | null;
+    try {
+      linkSubmisi = validasiLinkSubmisi(form, d.cabang);
+    } catch (e: any) {
+      return NextResponse.json({ error: e.message }, { status: 400 });
     }
 
     if (!(fileIdentitas instanceof File) || fileIdentitas.size === 0) {
@@ -139,20 +132,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: e.message }, { status: 400 });
     }
 
-    let urlSubmisi: string | null = null;
-    if (submisiKey && unggahLangsungTersedia()) {
-      try {
-        urlSubmisi = await terimaUnggahanSubmisi(submisiKey);
-      } catch (e: any) {
-        return NextResponse.json({ error: e.message }, { status: 400 });
-      }
-    } else if (fileSubmisi instanceof File && fileSubmisi.size > 0) {
-      try {
-        const saved = await saveFile(fileSubmisi, 'submisi', 'submisi');
-        urlSubmisi = saved.url;
-      } catch (e: any) {
-        return NextResponse.json({ error: e.message }, { status: 400 });
-      }
+    let urlSubmisi: string | null;
+    try {
+      urlSubmisi = await simpanBerkasSubmisi(form);
+    } catch (e: any) {
+      return NextResponse.json({ error: e.message }, { status: 400 });
     }
 
     // --- Cek kuota atomik & buat pendaftar ---

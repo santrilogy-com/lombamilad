@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CONTACT_WA } from '@/lib/data';
 import PageOrnaments from '@/components/PageOrnaments';
+import { isiFormSubmisi, jagaLayarMenyala, labelProgres, siapkanSubmisi, type ProgresSubmisi } from '@/lib/unggah-submisi-klien';
 
 type KuisInfo = {
   attemptStatus: string | null;
@@ -17,6 +18,13 @@ type Pengumuman = {
   judul: string;
   isi: string;
   createdAt: string;
+};
+
+type SubmisiInfo = {
+  batas: string;
+  dibuka: boolean;
+  adaBerkas: boolean;
+  linkSubmisi: string | null;
 };
 
 type StatusResult = {
@@ -39,6 +47,7 @@ type StatusResult = {
   peringkatFinal: number | null;
   verifikasiCatatan: string | null;
   kuis: KuisInfo | null;
+  submisi: SubmisiInfo | null;
   pengumuman: Pengumuman[];
 };
 
@@ -88,12 +97,13 @@ function CekStatusForm() {
   const [error, setError] = useState('');
   const [result, setResult] = useState<StatusResult | null>(null);
 
-  async function cari(nomorArg?: string, tokenArg?: string) {
+  // `diam`: muat ulang data tanpa mengosongkan dashboard (mis. setelah kirim karya).
+  async function cari(nomorArg?: string, tokenArg?: string, diam = false) {
     const n = (nomorArg ?? nomor).trim();
     const t = (tokenArg ?? token).trim();
     if (!n || !t) return;
     setError('');
-    setResult(null);
+    if (!diam) setResult(null);
     setBusy(true);
     try {
       const q = new URLSearchParams({ nomor: n, token: t });
@@ -308,6 +318,16 @@ function CekStatusForm() {
             <KuisCard nomor={result.nomorPendaftaran} token={token} kuis={result.kuis} status={result.statusKode} />
           ) : null}
 
+          {result.submisi ? (
+            <SubmisiCard
+              nomor={result.nomorPendaftaran}
+              token={token}
+              cabangId={result.cabangId}
+              submisi={result.submisi}
+              onTerkirim={() => cari(result.nomorPendaftaran, token, true)}
+            />
+          ) : null}
+
           <PanggilanCard nomor={result.nomorPendaftaran} token={token} cabangId={result.cabangId} statusKode={result.statusKode} />
 
           <PengumumanSection pengumuman={result.pengumuman} />
@@ -445,6 +465,141 @@ function KuisCard({ nomor, token, kuis, status }: { nomor: string; token: string
           Kuis Babak I belum dibuka oleh panitia. Pantau halaman ini untuk info terbaru.
         </p>
       )}
+    </div>
+  );
+}
+
+// Menyusulkan / mengganti naskah atau video dari dashboard, sampai batas akhir
+// cabang. Memakai alur unggah yang sama dengan form daftar (kompres + R2).
+function SubmisiCard({
+  nomor,
+  token,
+  cabangId,
+  submisi,
+  onTerkirim,
+}: {
+  nomor: string;
+  token: string;
+  cabangId: string;
+  submisi: SubmisiInfo;
+  onTerkirim: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [progres, setProgres] = useState<ProgresSubmisi | null>(null);
+  const [error, setError] = useState('');
+  const [sukses, setSukses] = useState('');
+  const sudahKirim = submisi.adaBerkas || Boolean(submisi.linkSubmisi);
+  const batas = new Date(submisi.batas).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  async function kirim(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (busy) return;
+    setError('');
+    setSukses('');
+    const formEl = e.currentTarget;
+    const fd = new FormData(formEl);
+    const file = fd.get('fileSubmisi');
+    const adaFile = file instanceof File && file.size > 0;
+    const link = String(fd.get('linkSubmisi') || '').trim();
+    if (!adaFile && !link) {
+      setError('Pilih berkas karya terlebih dahulu.');
+      return;
+    }
+    if (adaFile && link) {
+      setError('Pilih salah satu: unggah berkas video atau tempel link YouTube, jangan keduanya.');
+      return;
+    }
+    fd.set('nomor', nomor);
+    fd.set('token', token);
+    setBusy(true);
+    const wakeLock = await jagaLayarMenyala();
+    try {
+      if (adaFile) {
+        isiFormSubmisi(fd, await siapkanSubmisi(file, setProgres));
+        setProgres(null);
+      }
+      const res = await fetch('/api/pendaftar/submisi', { method: 'POST', body: fd });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(
+          data?.error ||
+            `Terjadi kesalahan pada server. Silakan coba lagi, atau hubungi panitia via WhatsApp di ${CONTACT_WA[0]}.`
+        );
+      }
+      formEl.reset();
+      setSukses('Karya Anda berhasil dikirim.');
+      onTerkirim();
+    } catch (err: any) {
+      setError(err?.message || 'Terjadi kesalahan. Silakan coba lagi.');
+    } finally {
+      setBusy(false);
+      setProgres(null);
+      wakeLock?.release().catch(() => {});
+    }
+  }
+
+  return (
+    <div style={{ background: 'var(--paper2)', borderRadius: 4, padding: 'clamp(22px, 3vw, 30px)', marginBottom: 20 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--olive-d)' }}>
+        Karya / Submisi
+      </div>
+      <p style={{ fontSize: 14, color: '#4b4740', margin: '10px 0 0', lineHeight: 1.6 }}>
+        {sudahKirim ? (
+          <>
+            <b style={{ color: '#2e7d2e' }}>✓ Karya sudah diterima{submisi.linkSubmisi ? ' (link YouTube)' : ''}.</b>{' '}
+            {submisi.dibuka ? `Anda masih bisa menggantinya sampai ${batas}.` : null}
+          </>
+        ) : submisi.dibuka ? (
+          <>
+            <b style={{ color: '#a94442' }}>Karya belum dikirim.</b> Kirim naskah{cabangId === 'khitobah' ? ' dan video' : ''} Anda
+            sebelum {batas}.
+          </>
+        ) : (
+          <b style={{ color: '#a94442' }}>Karya belum dikirim, dan pengiriman sudah ditutup.</b>
+        )}
+      </p>
+
+      {submisi.dibuka ? (
+        <form onSubmit={kirim} style={{ display: 'grid', gap: 12, marginTop: 16 }}>
+          <input
+            name="fileSubmisi"
+            type="file"
+            accept=".pdf,.doc,.docx,image/*,.mp4,.mov"
+            style={{ padding: '12px 14px', background: 'var(--paper)', border: '1px dashed rgba(36,33,28,0.28)', borderRadius: 2, fontSize: 13, width: '100%' }}
+          />
+          {cabangId === 'khitobah' ? (
+            <input
+              name="linkSubmisi"
+              type="url"
+              inputMode="url"
+              placeholder="atau tempel link YouTube (unlisted): https://youtu.be/..."
+              style={{ height: 46, padding: '0 14px', background: 'var(--paper)', border: '1px solid rgba(36,33,28,0.18)', borderRadius: 2, fontSize: 14, color: 'var(--ink)', outline: 'none' }}
+            />
+          ) : null}
+          <div style={{ fontSize: 12, color: 'var(--grey)' }}>
+            PDF, Word, gambar, atau video (MP4/MOV). Video besar otomatis dikompres. Mengirim ulang akan menggantikan karya sebelumnya.
+          </div>
+          <div>
+            <button
+              type="submit"
+              disabled={busy}
+              className="submit-hover"
+              style={{ height: 46, padding: '0 22px', background: 'var(--ink)', color: 'var(--paper)', border: 0, borderRadius: 2, fontSize: 13.5, fontWeight: 600, cursor: busy ? 'wait' : 'pointer' }}
+            >
+              {busy ? (progres ? labelProgres(progres) : 'Mengirim...') : sudahKirim ? 'Ganti Karya' : 'Kirim Karya'}
+            </button>
+          </div>
+          {progres ? (
+            <div style={{ fontSize: 12.5, color: '#7a2f2d' }}>Jangan tutup halaman ini atau mengunci layar sampai proses selesai.</div>
+          ) : null}
+          {error ? (
+            <div style={{ background: '#f4dede', borderLeft: '3px solid #a94442', borderRadius: 2, padding: '12px 14px', fontSize: 13, color: '#7a2f2d' }}>{error}</div>
+          ) : null}
+          {sukses ? (
+            <div style={{ background: '#dbeedb', borderLeft: '3px solid #2e7d2e', borderRadius: 2, padding: '12px 14px', fontSize: 13, color: '#2e5d2e' }}>{sukses}</div>
+          ) : null}
+        </form>
+      ) : null}
     </div>
   );
 }

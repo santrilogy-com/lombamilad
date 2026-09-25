@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { LOMBA } from '@/lib/data';
+import { LOMBA, BATAS_SUBMISI } from '@/lib/data';
+import { submisiMasihDibuka } from '@/lib/submisi';
 
 export const runtime = 'nodejs';
 
@@ -70,6 +71,15 @@ export async function GET(req: Request) {
     peringkatFinal: p.nilai?.peringkatFinal ?? null,
     verifikasiCatatan: p.verifikasiCatatan,
     kuis,
+    submisi: BATAS_SUBMISI[p.cabangId]
+      ? {
+          batas: BATAS_SUBMISI[p.cabangId],
+          dibuka:
+            submisiMasihDibuka(p.cabangId) && ['MENUNGGU_VERIFIKASI', 'TERVERIFIKASI'].includes(p.status),
+          adaBerkas: Boolean(p.fileSubmisi),
+          linkSubmisi: p.linkSubmisi,
+        }
+      : null,
     pengumuman: pengumuman.map((pg) => ({ id: pg.id, judul: pg.judul, isi: pg.isi, createdAt: pg.createdAt })),
   });
 }
