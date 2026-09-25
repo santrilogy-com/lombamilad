@@ -1,0 +1,5 @@
+{
+  "crons": [
+    { "path": "/api/cron/ringkasan-verifikasi", "schedule": "0 0 * * *" }
+  ]
+}

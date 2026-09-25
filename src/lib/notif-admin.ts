@@ -92,3 +92,40 @@ export function notifErrorServer(konteks: string, err: unknown) {
   const pesan = err instanceof Error ? err.message : String(err);
   return kirimNotifAdmin(`*⚠️ Error server — ${konteks}*\n${pesan.slice(0, 300)}\n\nCek log Vercel untuk detail.`);
 }
+
+const MAKS_NAMA_RINGKASAN = 50;
+
+/**
+ * Ringkasan harian pendaftar yang masih MENUNGGU_VERIFIKASI (dipanggil cron
+ * /api/cron/ringkasan-verifikasi). Tidak mengirim apa pun bila tidak ada yang
+ * menunggu, kecuali `paksa` (untuk uji coba). Mengembalikan jumlahnya.
+ */
+export async function notifRingkasanBelumVerifikasi({ paksa = false } = {}): Promise<number> {
+  const { prisma } = await import('@/lib/prisma');
+  const menunggu = await prisma.pendaftar.findMany({
+    where: { status: 'MENUNGGU_VERIFIKASI' },
+    orderBy: { createdAt: 'asc' },
+    select: { nama: true, cabangId: true, nomorPendaftaran: true, createdAt: true },
+  });
+  if (menunggu.length === 0) {
+    if (paksa) await kirimNotifAdmin('*Ringkasan verifikasi*\nTidak ada pendaftar yang menunggu verifikasi. Semua sudah diproses.');
+    return 0;
+  }
+
+  const perCabang = new Map<string, number>();
+  for (const p of menunggu) perCabang.set(p.cabangId, (perCabang.get(p.cabangId) || 0) + 1);
+  const baris = menunggu.slice(0, MAKS_NAMA_RINGKASAN).map((p, i) => {
+    const tgl = p.createdAt.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'short' });
+    return `${i + 1}. ${p.nama} — ${namaCabang(p.cabangId)} (${p.nomorPendaftaran}, daftar ${tgl})`;
+  });
+  const sisa = menunggu.length - baris.length;
+
+  await kirimNotifAdmin(
+    `*Ringkasan verifikasi — ${menunggu.length} pendaftar menunggu*\n` +
+      [...perCabang].map(([c, n]) => `• ${namaCabang(c)}: ${n}`).join('\n') +
+      `\n\n${baris.join('\n')}` +
+      (sisa > 0 ? `\n…dan ${sisa} lainnya.` : '') +
+      `\n\nSilakan verifikasi di menu Admin → Pendaftaran.`
+  );
+  return menunggu.length;
+}
