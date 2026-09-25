@@ -710,16 +710,13 @@ export default function KuisMqkClient() {
             50 soal nahwu, fikih, dan sharaf dari Kitab Fathul-Mu&rsquo;in Bab Ubudiyah. Waktu 15 detik
             per soal, tidak bisa kembali ke soal sebelumnya, dan kuis hanya dapat dikerjakan satu kali.
             Pastikan koneksi internet stabil sebelum memulai — jangan tutup atau muat ulang halaman
-            selama kuis berlangsung. Kuis akan berjalan dalam mode layar penuh. Sistem memantau
-            berbagai aktivitas selama kuis berlangsung (berpindah tab/jendela, membuka panel/DevTools,
-            keluar dari layar penuh, kamera terputus, berhenti membagikan layar); tindakan yang dianggap
-            mencurigakan akan tercatat dan dapat memengaruhi kelulusan Anda.
+            selama kuis berlangsung. Kuis berjalan dalam mode layar penuh dan di bawah pengawasan penuh
+            panitia; setiap indikasi kecurangan tercatat otomatis dan dapat menggugurkan kelulusan Anda.
           </p>
           <p style={{ fontSize: 14, lineHeight: 1.6, color: '#4b4740', margin: '0 0 32px', background: 'var(--paper2)', borderRadius: 3, padding: '14px 16px' }}>
-            Kuis ini memerlukan akses kamera untuk verifikasi wajah selama kuis berlangsung, guna
-            memastikan peserta yang mengerjakan adalah Anda sendiri (bukan joki). Bila mengerjakan dari
-            laptop/PC, Anda juga diminta membagikan seluruh layar selama kuis. Pastikan kamera tetap
-            aktif dan wajah Anda terlihat jelas sepanjang kuis.
+            Siapkan perangkat dengan kamera yang berfungsi baik. Wajah Anda harus terlihat jelas di
+            kamera sepanjang kuis, dan bila mengerjakan dari laptop/PC, seluruh layar wajib dibagikan
+            kepada panitia selama kuis berlangsung.
           </p>
           <form onSubmit={(e) => { e.preventDefault(); bukaPersetujuan(); }} style={{ display: 'grid', gap: 16 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -936,30 +933,24 @@ function ModalPersetujuan(props: {
           Persetujuan Pengawasan Kuis
         </h2>
         <p style={{ fontSize: 14, lineHeight: 1.6, color: '#4b4740', margin: '0 0 10px' }}>
-          Untuk menjaga kejujuran dan keadilan bagi seluruh peserta, selama kuis berlangsung:
+          Untuk menjamin kejujuran dan keadilan bagi seluruh peserta, kuis ini berlangsung di bawah{' '}
+          <b>pengawasan penuh panitia</b>.
         </p>
         <ul style={{ fontSize: 13.5, lineHeight: 1.6, color: '#4b4740', margin: '0 0 14px', paddingLeft: 20 }}>
-          <li>Kamera harus aktif; sistem mengambil dua foto wajah (awal dan menjelang akhir) untuk verifikasi.</li>
-          {props.layarDidukung ? (
-            <li>Anda wajib membagikan <b>seluruh layar</b>. Layar hanya dipastikan tetap dibagikan &mdash; tidak direkam dan tidak disimpan.</li>
-          ) : null}
           <li>
-            Aktivitas berikut tercatat dan dapat memengaruhi kelulusan: berpindah tab/aplikasi atau jendela, keluar dari layar penuh,
-            membuka panel/DevTools, kamera terputus{props.layarDidukung ? ', dan berhenti membagikan layar' : ''}.
+            {props.layarDidukung
+              ? 'Kamera dan seluruh layar Anda wajib aktif dan dipantau sejak awal hingga kuis selesai.'
+              : 'Kamera Anda wajib aktif dan seluruh aktivitas pada perangkat ini dipantau sejak awal hingga kuis selesai.'}
           </li>
+          <li>Setiap tindakan yang mengarah pada kecurangan tercatat secara otomatis dan dilaporkan langsung kepada panitia.</li>
+          <li>Pelanggaran akan ditinjau oleh panitia dan dewan juri, dan dapat berakibat gugurnya kelulusan Anda.</li>
         </ul>
-        {!props.layarDidukung ? (
-          <p style={{ fontSize: 12.5, lineHeight: 1.55, color: '#5a554c', background: 'var(--paper2)', borderRadius: 3, padding: '10px 12px', margin: '0 0 14px' }}>
-            Anda mengerjakan dari HP/tablet. Seluruh aktivitas pada perangkat ini selama kuis tetap dipantau &mdash; berpindah
-            aplikasi, menutup halaman, atau kamera terputus akan langsung tercatat dan dilaporkan kepada panitia.
-          </p>
-        ) : null}
 
         <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 13.5, lineHeight: 1.55, color: 'var(--ink)', margin: '0 0 18px', cursor: 'pointer' }}>
           <input type="checkbox" checked={props.setuju} onChange={(e) => props.onSetuju(e.target.checked)} style={{ marginTop: 3 }} />
           <span>
-            Saya memahami dan menyetujui pengawasan di atas, serta akan mengerjakan kuis secara jujur tanpa bantuan orang lain maupun
-            alat atau aplikasi lain.
+            Saya menyetujui pengawasan selama kuis dan menyatakan akan mengerjakannya sendiri secara jujur, tanpa bantuan orang
+            lain maupun alat atau aplikasi apa pun. Saya siap menerima keputusan panitia apabila terbukti melanggar.
           </span>
         </label>
 
