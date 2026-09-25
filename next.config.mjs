@@ -20,6 +20,9 @@ const CSP = [
   "font-src 'self'",
   `connect-src 'self'${R2_HOST}`,
   "media-src 'self'",
+  // mediabunny (kompres video di /daftar) membuat Web Worker kecil dari blob: URL
+  // untuk timer yang tidak di-throttle saat tab tersembunyi.
+  "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
