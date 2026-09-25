@@ -114,7 +114,11 @@ export default function PenilaianTable({
       const data = await res.json();
       if (data?.ok) {
         const infoEmail = await kirimEmailStatusBerubah(data.berubah || []);
-        setMsg(`Berhasil diproses. ${infoEmail} Muat ulang halaman untuk melihat hasil.`);
+        const infoKuis = [
+          data.difinalisasi ? `${data.difinalisasi} kuis yang ditinggalkan di tengah jalan telah dinilai (soal sisa dihitung salah).` : '',
+          data.masihMengerjakan ? `Perhatian: ${data.masihMengerjakan} peserta masih mengerjakan kuis dan belum ikut diperingkat — proses ulang setelah mereka selesai.` : '',
+        ].filter(Boolean).join(' ');
+        setMsg(`Berhasil diproses. ${infoKuis} ${infoEmail} Muat ulang halaman untuk melihat hasil.`);
       } else {
         setMsg(data?.error || 'Gagal memproses');
       }

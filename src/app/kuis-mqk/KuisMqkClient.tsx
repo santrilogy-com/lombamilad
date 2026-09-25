@@ -905,7 +905,12 @@ function ModalPersetujuan(props: {
   onMulai: () => void;
   onBatal: () => void;
 }) {
-  const siap = props.setuju && props.kameraSiap && (!props.layarDidukung || props.layarAktif);
+  // Di HP/tablet (peramban tanpa getDisplayMedia) langkah "Bagikan Layar" tetap
+  // ditampilkan sebagai langkah persetujuan agar alurnya sama dengan laptop/PC;
+  // menekannya hanya menandai langkah selesai.
+  const [layarFormal, setLayarFormal] = useState(false);
+  const layarBeres = props.layarDidukung ? props.layarAktif : layarFormal;
+  const siap = props.setuju && props.kameraSiap && layarBeres;
   const tombolLangkah = (selesai: boolean) =>
     ({
       height: 36,
@@ -961,14 +966,17 @@ function ModalPersetujuan(props: {
               {props.kameraSiap ? '✓ Kamera aktif' : 'Izinkan Kamera'}
             </button>
           </div>
-          {props.layarDidukung ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <span style={{ fontSize: 13.5 }}>2. Bagikan seluruh layar</span>
-              <button type="button" onClick={props.onBagikanLayar} disabled={props.layarAktif} style={tombolLangkah(props.layarAktif)}>
-                {props.layarAktif ? '✓ Layar dibagikan' : 'Bagikan Layar'}
-              </button>
-            </div>
-          ) : null}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <span style={{ fontSize: 13.5 }}>2. Bagikan seluruh layar</span>
+            <button
+              type="button"
+              onClick={props.layarDidukung ? props.onBagikanLayar : () => setLayarFormal(true)}
+              disabled={layarBeres}
+              style={tombolLangkah(layarBeres)}
+            >
+              {props.layarDidukung ? (props.layarAktif ? '✓ Layar dibagikan' : 'Bagikan Layar') : layarFormal ? '✓ Siap' : 'Bagikan Layar'}
+            </button>
+          </div>
           {props.layarError ? <div style={{ fontSize: 12.5, color: '#a94442' }}>{props.layarError}</div> : null}
           {props.error ? <div style={{ fontSize: 12.5, color: '#a94442' }}>{props.error}</div> : null}
         </div>

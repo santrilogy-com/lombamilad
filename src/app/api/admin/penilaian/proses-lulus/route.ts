@@ -30,12 +30,15 @@ export async function POST() {
 
   for (const cid of cabangIds) {
     const daftar = peserta
-      .filter((p) => p.cabangId === cid && p.nilai?.nilaiPenyisihan !== null)
+      // `!= null` (bukan `!== null`): peserta tanpa baris Nilai sama sekali punya
+      // nilaiPenyisihan undefined, dan dulu lolos filter ini lalu membuat sort melempar
+      // TypeError sehingga seluruh proses kelulusan gagal.
+      .filter((p) => p.cabangId === cid && p.nilai?.nilaiPenyisihan != null)
       .sort((a, b) => (b.nilai!.nilaiPenyisihan as number) - (a.nilai!.nilaiPenyisihan as number));
 
     const lolos = daftar.slice(0, JUMLAH_FINALIST);
     const gugur = daftar.slice(JUMLAH_FINALIST);
-    const belumDinilai = peserta.filter((p) => p.cabangId === cid && p.nilai?.nilaiPenyisihan === null).length;
+    const belumDinilai = peserta.filter((p) => p.cabangId === cid && p.nilai?.nilaiPenyisihan == null).length;
 
     await prisma.$transaction(async (tx) => {
       for (let i = 0; i < daftar.length; i++) {

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAdminSession } from '@/lib/require-admin';
 import { prisma } from '@/lib/prisma';
+import { finalisasiSkor, GRACE_MS } from '@/lib/kuis';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -11,6 +12,19 @@ const JUMLAH_LOLOS_BABAK2 = 10;
 export async function POST() {
   const session = await requireAdminSession();
   if (!session) return new NextResponse('Unauthorized', { status: 401 });
+
+  // Peserta yang menutup halaman di tengah kuis tidak pernah memicu finalisasi, jadi
+  // nilainya kosong dan sebelumnya tidak ikut diperingkat sama sekali. Finalisasi dulu
+  // attempt yang sudah ditinggalkan (batas waktu soalnya lewat): soal yang belum
+  // dijawab dihitung salah. Attempt yang batas soalnya masih berjalan dibiarkan —
+  // peserta itu mungkin sedang mengerjakan.
+  const batasTinggal = new Date(Date.now() - GRACE_MS);
+  const ditinggalkan = await prisma.kuisAttempt.findMany({
+    where: { status: 'SEDANG', batasWaktuSoal: { lt: batasTinggal } },
+    select: { id: true },
+  });
+  for (const a of ditinggalkan) await finalisasiSkor(a.id);
+  const masihMengerjakan = await prisma.kuisAttempt.count({ where: { status: 'SEDANG' } });
 
   const peserta = await prisma.pendaftar.findMany({
     where: {
@@ -55,5 +69,7 @@ export async function POST() {
     lolos: lolos.map((p) => p.nomorPendaftaran),
     gugur: gugur.map((p) => p.nomorPendaftaran),
     belumDinilai,
+    masihMengerjakan,
+    difinalisasi: ditinggalkan.length,
   });
 }
