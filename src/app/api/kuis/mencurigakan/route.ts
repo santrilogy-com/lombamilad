@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rateLimit, ipFromRequest } from '@/lib/rate-limit';
-import { verifikasiPeserta, TIPE_AKTIVITAS_MENCURIGAKAN, type TipeAktivitasMencurigakan } from '@/lib/kuis';
+import {
+  verifikasiPeserta,
+  LABEL_AKTIVITAS_MENCURIGAKAN,
+  TIPE_AKTIVITAS_MENCURIGAKAN,
+  type TipeAktivitasMencurigakan,
+} from '@/lib/kuis';
+import { notifMencurigakan } from '@/lib/notif-admin';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -35,7 +41,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  await prisma.$transaction([
+  const [diperbarui] = await prisma.$transaction([
     prisma.kuisAttempt.update({
       where: { id: attempt.id },
       data: { jumlahMencurigakan: { increment: 1 } },
@@ -44,6 +50,13 @@ export async function POST(req: Request) {
       data: { attemptId: attempt.id, tipe },
     }),
   ]);
+
+  await notifMencurigakan({
+    nama: pendaftar.nama,
+    nomorPendaftaran: pendaftar.nomorPendaftaran,
+    jumlah: diperbarui.jumlahMencurigakan,
+    labelTipe: LABEL_AKTIVITAS_MENCURIGAKAN[tipe],
+  });
 
   return NextResponse.json({ ok: true });
 }

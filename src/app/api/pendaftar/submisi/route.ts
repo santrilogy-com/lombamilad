@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rateLimit, ipFromRequest } from '@/lib/rate-limit';
 import { deleteFile } from '@/lib/storage';
+import { notifErrorServer, notifKaryaDikirim } from '@/lib/notif-admin';
 import { simpanBerkasSubmisi, submisiMasihDibuka, validasiLinkSubmisi } from '@/lib/submisi';
 
 export const runtime = 'nodejs';
@@ -59,10 +60,16 @@ export async function POST(req: Request) {
       data: { fileSubmisi: urlSubmisi, linkSubmisi },
     });
     if (p.fileSubmisi && p.fileSubmisi !== urlSubmisi) await deleteFile(p.fileSubmisi);
+    await notifKaryaDikirim({
+      ...p,
+      jenis: linkSubmisi ? 'link' : 'berkas',
+      mengganti: Boolean(p.fileSubmisi || p.linkSubmisi),
+    });
 
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error('Submisi error', e);
+    await notifErrorServer('kirim karya', e);
     return NextResponse.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
   }
 }

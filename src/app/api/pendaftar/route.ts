@@ -6,6 +6,7 @@ import { simpanBerkasSubmisi, validasiLinkSubmisi } from '@/lib/submisi';
 import { rateLimit, ipFromRequest } from '@/lib/rate-limit';
 import { LOMBA } from '@/lib/data';
 import { kirimKonfirmasiPendaftar } from '@/lib/email';
+import { notifErrorServer, notifPendaftarBaru } from '@/lib/notif-admin';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -169,7 +170,10 @@ export async function POST(req: Request) {
         },
       });
 
-      await fireAndForgetEmail(d.nama, d.cabang, pendaftar, new URL(req.url), d.email);
+      await Promise.all([
+        fireAndForgetEmail(d.nama, d.cabang, pendaftar, new URL(req.url), d.email),
+        notifPendaftarBaru({ ...pendaftar, adaKarya: Boolean(urlSubmisi || linkSubmisi) }),
+      ]);
 
       return NextResponse.json(
         {
@@ -183,10 +187,12 @@ export async function POST(req: Request) {
     } catch (e) {
       // hapus berkas bila DB gagal
       console.error('Register DB error', e);
+      await notifErrorServer('simpan pendaftaran', e);
       return NextResponse.json({ error: 'Gagal menyimpan pendaftaran' }, { status: 500 });
     }
   } catch (e) {
     console.error('Register error', e);
+    await notifErrorServer('pendaftaran', e);
     return NextResponse.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
   }
 }
