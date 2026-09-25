@@ -1,3 +1,11 @@
+// Berkas submisi (video) diunggah langsung dari browser ke bucket R2 lewat URL
+// bertanda tangan (lihat src/lib/storage.ts) — hanya host bucket itu yang
+// ditambahkan ke connect-src, bukan seluruh *.r2.cloudflarestorage.com.
+const R2_HOST =
+  process.env.R2_ACCOUNT_ID && process.env.R2_BUCKET_NAME
+    ? ` https://${process.env.R2_BUCKET_NAME}.${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
+    : '';
+
 // Next.js App Router menyuntik payload hydration lewat <script> inline (bukan
 // file eksternal), jadi script-src butuh 'unsafe-inline' kecuali memakai nonce
 // per-request via middleware (infrastruktur tambahan yang tidak ada di proyek
@@ -10,7 +18,7 @@ const CSP = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
   "font-src 'self'",
-  "connect-src 'self'",
+  `connect-src 'self'${R2_HOST}`,
   "media-src 'self'",
   "object-src 'none'",
   "base-uri 'self'",
