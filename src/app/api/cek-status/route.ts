@@ -71,7 +71,9 @@ export async function GET(req: Request) {
     peringkatFinal: p.nilai?.peringkatFinal ?? null,
     verifikasiCatatan: p.verifikasiCatatan,
     kuis,
-    submisi: BATAS_SUBMISI[p.cabangId]
+    // Pendaftar yang ditolak tidak diberi kartu submisi: teks "karya diterima" /
+    // "pengiriman ditutup" di kartu itu menyesatkan untuk status ini.
+    submisi: BATAS_SUBMISI[p.cabangId] && p.status !== 'DITOLAK'
       ? {
           batas: BATAS_SUBMISI[p.cabangId],
           dibuka:
