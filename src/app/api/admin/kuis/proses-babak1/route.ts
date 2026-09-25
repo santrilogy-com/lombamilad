@@ -31,12 +31,25 @@ export async function POST() {
       cabangId: 'mqk',
       status: { in: ['TERVERIFIKASI', 'LOLOS_PENYISIHAN', 'GUGUR_PENYISIHAN', 'LOLOS_FINAL', 'JUARA_1', 'JUARA_2', 'JUARA_3'] },
     },
-    include: { nilai: true },
+    include: { nilai: true, kuisAttempt: true },
   });
 
+  // Urutan peringkat: nilai tertinggi; bila sama, aktivitas mencurigakan lebih
+  // sedikit; bila masih sama, waktu pengerjaan (mulai s.d. selesai) lebih cepat.
+  // Tanpa penentu ini, siapa yang lolos di antara nilai kembar di batas 10 besar
+  // bergantung pada urutan acak baris database.
+  const durasi = (p: (typeof peserta)[number]) => {
+    const a = p.kuisAttempt;
+    return a?.mulaiAt && a.selesaiAt ? a.selesaiAt.getTime() - a.mulaiAt.getTime() : Number.MAX_SAFE_INTEGER;
+  };
   const daftar = peserta
-    .filter((p) => p.nilai?.nilaiPenyisihan !== null && p.nilai?.nilaiPenyisihan !== undefined)
-    .sort((a, b) => (b.nilai!.nilaiPenyisihan as number) - (a.nilai!.nilaiPenyisihan as number));
+    .filter((p) => p.nilai?.nilaiPenyisihan != null)
+    .sort(
+      (a, b) =>
+        (b.nilai!.nilaiPenyisihan as number) - (a.nilai!.nilaiPenyisihan as number) ||
+        (a.kuisAttempt?.jumlahMencurigakan ?? 0) - (b.kuisAttempt?.jumlahMencurigakan ?? 0) ||
+        durasi(a) - durasi(b)
+    );
 
   const lolos = daftar.slice(0, JUMLAH_LOLOS_BABAK2);
   const gugur = daftar.slice(JUMLAH_LOLOS_BABAK2);
