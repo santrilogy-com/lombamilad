@@ -58,6 +58,7 @@ model Pendaftar {
   nomorIdentitas  String
   fileIdentitas   String
   fileSubmisi     String?
+  linkSubmisi     String? // link YouTube sebagai alternatif unggah video
   status          StatusPendaftar @default(MENUNGGU_VERIFIKASI)
   tokenCek        String           @unique
   verifikasiCatatan String?

@@ -4,7 +4,7 @@ import path from 'path';
 import { requireAdminSession } from '@/lib/require-admin';
 import { prisma } from '@/lib/prisma';
 import { get as getBlob } from '@vercel/blob';
-import { getR2Object } from '@/lib/storage';
+import { urlBacaR2 } from '@/lib/storage';
 
 const LOCAL_DIR = path.resolve(process.env.LOCAL_STORAGE_DIR || './storage/uploads');
 
@@ -78,6 +78,7 @@ export async function GET(req: Request) {
     '.jpeg': 'image/jpeg',
     '.webp': 'image/webp',
     '.mp4': 'video/mp4',
+    '.mov': 'video/quicktime',
     '.doc': 'application/msword',
     '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   };
@@ -93,19 +94,15 @@ export async function GET(req: Request) {
   });
 }
 
-/** Ambil berkas dari Cloudflare R2 (bucket privat) memakai kredensial server. */
+/**
+ * Berkas di Cloudflare R2 (bucket privat): arahkan ke URL bertanda tangan yang
+ * kedaluwarsa dalam 5 menit, bukan dialirkan lewat server — respons fungsi
+ * Vercel dibatasi ~4.5MB sehingga video submisi tidak akan pernah terkirim.
+ */
 async function serveR2(rel: string) {
   try {
-    const { body, contentType } = await getR2Object(rel);
-    if (!body) return new NextResponse('Not found', { status: 404 });
-    const bytes = await (body as { transformToByteArray: () => Promise<Uint8Array> }).transformToByteArray();
-    return new NextResponse(new Uint8Array(bytes), {
-      headers: {
-        'Content-Type': contentType,
-        'Content-Disposition': 'inline',
-        'Cache-Control': 'private, no-store',
-      },
-    });
+    const signed = await urlBacaR2(rel);
+    return NextResponse.redirect(signed, { status: 302, headers: { 'Cache-Control': 'private, no-store' } });
   } catch {
     return new NextResponse('Not found', { status: 404 });
   }

@@ -63,6 +63,7 @@ export default async function AdminPendaftaranPage({
     catatan: p.verifikasiCatatan,
     fileIdentitas: p.fileIdentitas,
     fileSubmisi: p.fileSubmisi,
+    linkSubmisi: p.linkSubmisi,
     nilaiPenyisihan: p.nilai?.nilaiPenyisihan ?? null,
     nilaiFinal: p.nilai?.nilaiFinal ?? null,
   }));

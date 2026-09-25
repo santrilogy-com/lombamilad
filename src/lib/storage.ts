@@ -2,7 +2,8 @@ import { randomUUID } from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { put, del } from '@vercel/blob';
-import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 /**
  * Penyimpanan berkas yang mudah diganti provider (local / vercel-blob / r2) lewat env.
@@ -21,7 +22,8 @@ export type SavedFile = { url: string; name: string; size: number };
 const ALLOWED_TYPES: Record<string, string[]> = {
   // Kartu tanda pengenal: scan/foto (accept="image/*,.pdf")
   identitas: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
-  // Berkas submisi: naskah atau video (accept=".pdf,.doc,.docx,image/*,.mp4")
+  // Berkas submisi: naskah atau video (accept=".pdf,.doc,.docx,image/*,.mp4,.mov")
+  // video/quicktime = .mov, format bawaan kamera iPhone.
   submisi: [
     'application/pdf',
     'application/msword',
@@ -30,6 +32,7 @@ const ALLOWED_TYPES: Record<string, string[]> = {
     'image/png',
     'image/webp',
     'video/mp4',
+    'video/quicktime',
   ],
   // Foto verifikasi kuis: selalu berasal dari <canvas>.toBlob() di klien, bukan
   // unggahan bebas — cukup batasi ke format gambar umum.
@@ -46,6 +49,8 @@ const MAGIC_CHECKS: Record<string, (b: Buffer) => boolean> = {
   'image/jpeg': (b) => b.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff])),
   'image/webp': (b) => b.subarray(0, 4).toString('latin1') === 'RIFF' && b.subarray(8, 12).toString('latin1') === 'WEBP',
   'video/mp4': (b) => b.subarray(4, 8).toString('latin1') === 'ftyp',
+  // .mov lama tidak selalu diawali atom "ftyp" — atom pertama bisa moov/mdat/wide/free.
+  'video/quicktime': (b) => ['ftyp', 'moov', 'mdat', 'wide', 'free', 'skip'].includes(b.subarray(4, 8).toString('latin1')),
   'application/msword': (b) => b.subarray(0, 8).equals(Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1])),
   // .docx adalah arsip ZIP (signature PK\x03\x04)
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': (b) =>
@@ -55,6 +60,12 @@ const MAGIC_CHECKS: Record<string, (b: Buffer) => boolean> = {
 function isiSesuaiTipe(bytes: Buffer, mime: string): boolean {
   const check = MAGIC_CHECKS[mime];
   return check ? check(bytes) : true;
+}
+
+function ekstensiBerkas(name: string, mime: string) {
+  const ext = name.split('.').pop()?.toLowerCase() || '';
+  if (/^[a-z0-9]{1,5}$/.test(ext) && ext !== name.toLowerCase()) return ext;
+  return mime === 'application/pdf' ? 'pdf' : mime.startsWith('video/') ? 'mp4' : 'img';
 }
 
 function ensureLocalDir(dir: string) {
@@ -105,7 +116,7 @@ export async function saveFile(
   if (!isiSesuaiTipe(bytes, file.type)) {
     throw new Error('Isi berkas tidak sesuai dengan tipe filenya. Pastikan berkas tidak rusak dan coba unggah ulang.');
   }
-  const ext = file.name.split('.').pop()?.toLowerCase() || (file.type === 'application/pdf' ? 'pdf' : 'img');
+  const ext = ekstensiBerkas(file.name, file.type);
   const filename = `${Date.now()}-${randomUUID().slice(0, 8)}.${ext}`;
 
   if (STORAGE_PROVIDER === 'local') {
@@ -179,9 +190,86 @@ export async function deleteFile(url: string) {
   }
 }
 
-/** Ambil stream + tipe konten sebuah objek R2 (dipakai oleh proxy /api/berkas). */
-export async function getR2Object(url: string) {
+// ---------------------------------------------------------------------------
+// Unggah langsung dari browser ke R2 (presigned PUT URL).
+//
+// Batas body request Vercel (~4.5MB) membuat video submisi (mis. khitobah,
+// bahkan 19 detik dari HP bisa >10MB) tidak mungkin lewat /api/pendaftar.
+// Jadi untuk submisi, browser minta URL bertanda tangan, PUT berkasnya
+// langsung ke bucket R2, lalu hanya mengirim kunci objeknya ke /api/pendaftar.
+// Server memverifikasi ulang ukuran & signature isi berkas sebelum menerima.
+// ---------------------------------------------------------------------------
+
+// Video dikompres otomatis di browser (lihat src/lib/kompres-video.ts) sehingga
+// video 7 menit menjadi ±80MB; batas ini memberi ruang untuk HP yang tidak
+// mendukung kompresi tapi videonya pendek.
+export const MAX_SUBMISI_LANGSUNG_MB = 150;
+const MAX_SUBMISI_LANGSUNG_BYTES = MAX_SUBMISI_LANGSUNG_MB * 1024 * 1024;
+const KUNCI_SUBMISI_RE = /^submisi\/\d+-[0-9a-f]{8}\.[a-z0-9]{1,5}$/;
+
+export function unggahLangsungTersedia() {
+  return STORAGE_PROVIDER === 'r2';
+}
+
+export async function buatUrlUnggahSubmisi(name: string, mime: string, size: number) {
+  if (!ALLOWED_TYPES.submisi.includes(mime)) {
+    throw new Error(`Tipe berkas tidak didukung (${mime || 'unknown'}).`);
+  }
+  if (!Number.isFinite(size) || size <= 0) throw new Error('Berkas kosong.');
+  if (size > MAX_SUBMISI_LANGSUNG_BYTES) {
+    throw new Error(`Ukuran berkas submisi maksimal ${MAX_SUBMISI_LANGSUNG_MB}MB.`);
+  }
+  const key = `submisi/${Date.now()}-${randomUUID().slice(0, 8)}.${ekstensiBerkas(name, mime)}`;
+  const uploadUrl = await getSignedUrl(
+    getR2Client(),
+    new PutObjectCommand({ Bucket: r2Bucket(), Key: key, ContentType: mime }),
+    { expiresIn: 60 * 60 }
+  );
+  return { key, uploadUrl };
+}
+
+/**
+ * Pastikan objek hasil unggah langsung benar-benar ada, ukurannya dalam batas,
+ * dan isinya sesuai tipe yang diklaim. Mengembalikan url "r2://..." untuk DB.
+ * Objek yang tidak lolos dihapus.
+ */
+export async function terimaUnggahanSubmisi(key: string): Promise<string> {
+  if (!KUNCI_SUBMISI_RE.test(key)) throw new Error('Berkas submisi tidak valid. Silakan unggah ulang.');
+  const client = getR2Client();
+  const Bucket = r2Bucket();
+  let head;
+  try {
+    head = await client.send(new HeadObjectCommand({ Bucket, Key: key }));
+  } catch {
+    throw new Error('Berkas submisi belum terunggah. Silakan unggah ulang.');
+  }
+  const mime = head.ContentType || '';
+  const size = head.ContentLength || 0;
+  let valid = ALLOWED_TYPES.submisi.includes(mime) && size > 0 && size <= MAX_SUBMISI_LANGSUNG_BYTES;
+  if (valid) {
+    const awal = await client.send(new GetObjectCommand({ Bucket, Key: key, Range: 'bytes=0-15' }));
+    const bytes = Buffer.from(
+      await (awal.Body as { transformToByteArray: () => Promise<Uint8Array> }).transformToByteArray()
+    );
+    valid = isiSesuaiTipe(bytes, mime);
+  }
+  if (!valid) {
+    await deleteFile(`r2://${key}`);
+    throw new Error('Isi berkas submisi tidak sesuai tipe/ukuran yang diizinkan. Silakan unggah ulang.');
+  }
+  return `r2://${key}`;
+}
+
+/**
+ * URL baca bertanda tangan berumur pendek untuk objek R2. Dipakai /api/berkas
+ * (setelah otorisasi) sebagai redirect, karena respons fungsi Vercel juga
+ * dibatasi ~4.5MB — video submisi tidak bisa dialirkan lewat server.
+ */
+export async function urlBacaR2(url: string) {
   const key = url.slice('r2://'.length);
-  const res = await getR2Client().send(new GetObjectCommand({ Bucket: r2Bucket(), Key: key }));
-  return { body: res.Body, contentType: res.ContentType || 'application/octet-stream' };
+  return getSignedUrl(
+    getR2Client(),
+    new GetObjectCommand({ Bucket: r2Bucket(), Key: key, ResponseContentDisposition: 'inline' }),
+    { expiresIn: 5 * 60 }
+  );
 }

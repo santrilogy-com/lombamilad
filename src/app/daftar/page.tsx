@@ -16,6 +16,7 @@ export default function DaftarPage() {
   const [token, setToken] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [progres, setProgres] = useState<{ tahap: 'kompres' | 'unggah'; persen: number } | null>(null);
 
   const selected = LOMBA.find((c) => c.id === cabang);
 
@@ -56,6 +57,48 @@ export default function DaftarPage() {
   }
 
   const MAX_FILE_MB = 4;
+  // Batas submisi bila diunggah langsung ke storage (harus sama dengan
+  // MAX_SUBMISI_LANGSUNG_MB di src/lib/storage.ts).
+  const MAX_SUBMISI_MB = 150;
+  // Video di atas ukuran ini dikompres dulu di browser (lihat src/lib/kompres-video.ts).
+  const KOMPRES_DI_ATAS_MB = 20;
+
+  /**
+   * Unggah berkas submisi langsung ke storage lewat URL bertanda tangan, supaya
+   * video besar tidak terbentur batas ukuran request server (~4.5MB).
+   * Mengembalikan kunci objek, atau null bila server tidak mendukung unggah
+   * langsung (berkas lalu dikirim bersama form seperti biasa).
+   */
+  async function unggahSubmisiLangsung(file: File): Promise<string | null> {
+    // Beberapa HP melaporkan file.type kosong untuk .mov/.mp4 — tebak dari ekstensi.
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    const type = file.type || (ext === 'mov' ? 'video/quicktime' : ext === 'mp4' ? 'video/mp4' : '');
+    const res = await fetch('/api/pendaftar/unggah-submisi', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: file.name, type, size: file.size }),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(data?.error || 'Gagal menyiapkan unggahan berkas submisi.');
+    if (!data?.tersedia) return null;
+
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', data.uploadUrl);
+      xhr.setRequestHeader('Content-Type', type);
+      xhr.upload.onprogress = (ev) => {
+        if (ev.lengthComputable) setProgres({ tahap: 'unggah', persen: Math.round((ev.loaded / ev.total) * 100) });
+      };
+      xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error()));
+      xhr.onerror = () => reject(new Error());
+      xhr.send(file);
+    }).catch(() => {
+      throw new Error(
+        `Gagal mengunggah berkas submisi. Periksa koneksi internet lalu coba lagi, atau hubungi panitia via WhatsApp di ${CONTACT_WA[0]}.`
+      );
+    });
+    return data.key as string;
+  }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -77,12 +120,45 @@ export default function DaftarPage() {
       setError(`Ukuran kartu tanda pengenal maksimal ${MAX_FILE_MB}MB. Silakan kompres foto/scan-nya lalu unggah ulang.`);
       return;
     }
-    if (fileSubmisi instanceof File && fileSubmisi.size > maxBytes) {
-      setError(`Ukuran berkas submisi maksimal ${MAX_FILE_MB}MB. Silakan kompres berkasnya lalu unggah ulang.`);
+    const adaSubmisi = fileSubmisi instanceof File && fileSubmisi.size > 0;
+    const linkSubmisi = String(fd.get('linkSubmisi') || '').trim();
+    if (adaSubmisi && linkSubmisi) {
+      setError('Pilih salah satu: unggah berkas video atau tempel link YouTube, jangan keduanya.');
       return;
     }
     setBusy(true);
+    // Cegah layar HP terkunci selama kompres/unggah — peramban menghentikan
+    // proses di halaman yang layarnya mati.
+    const wakeLock = await navigator.wakeLock?.request('screen').catch(() => null);
     try {
+      if (adaSubmisi) {
+        let berkas: File = fileSubmisi;
+        const video = berkas.type.startsWith('video/') || /\.(mp4|mov)$/i.test(berkas.name);
+        if (video && berkas.size > KOMPRES_DI_ATAS_MB * 1024 * 1024) {
+          setProgres({ tahap: 'kompres', persen: 0 });
+          const { kompresVideo } = await import('@/lib/kompres-video');
+          const hasil = await kompresVideo(berkas, (persen) => setProgres({ tahap: 'kompres', persen }));
+          if (hasil) berkas = hasil;
+        }
+        if (berkas.size > MAX_SUBMISI_MB * 1024 * 1024) {
+          throw new Error(
+            video
+              ? `Video terlalu besar (${Math.round(berkas.size / 1024 / 1024)}MB) dan tidak bisa dikompres otomatis di perangkat ini. Coba kirim dari HP/laptop lain dengan Chrome versi terbaru, kompres videonya terlebih dahulu, atau unggah ke YouTube (setelan "Tidak publik"/unlisted) lalu tempel link-nya.`
+              : `Ukuran berkas submisi maksimal ${MAX_SUBMISI_MB}MB. Silakan kompres berkasnya lalu unggah ulang.`
+          );
+        }
+        setProgres({ tahap: 'unggah', persen: 0 });
+        const key = await unggahSubmisiLangsung(berkas);
+        if (key) {
+          fd.delete('fileSubmisi');
+          fd.set('submisiKey', key);
+        } else if (berkas.size > maxBytes) {
+          throw new Error(`Ukuran berkas submisi maksimal ${MAX_FILE_MB}MB. Silakan kompres berkasnya lalu unggah ulang.`);
+        } else {
+          fd.set('fileSubmisi', berkas);
+        }
+        setProgres(null);
+      }
       const res = await fetch('/api/pendaftar', { method: 'POST', body: fd });
       const raw = await res.text();
       let data: any = null;
@@ -103,6 +179,8 @@ export default function DaftarPage() {
       setError(err?.message || 'Terjadi kesalahan. Silakan coba lagi.');
     } finally {
       setBusy(false);
+      setProgres(null);
+      wakeLock?.release().catch(() => {});
     }
   }
 
@@ -305,10 +383,26 @@ export default function DaftarPage() {
               : 'Pilih cabang terlebih dahulu untuk melihat ketentuan unggahan.'}
           </p>
           <label htmlFor="fileSubmisi" style={labelStyle}>Berkas submisi (naskah/video) — opsional</label>
-          <input id="fileSubmisi" name="fileSubmisi" type="file" accept=".pdf,.doc,.docx,image/*,.mp4" style={{ marginTop: 8, padding: '12px 14px', background: 'var(--paper2)', border: '1px dashed rgba(36,33,28,0.28)', borderRadius: 2, fontSize: 13, width: '100%' }} />
+          <input id="fileSubmisi" name="fileSubmisi" type="file" accept=".pdf,.doc,.docx,image/*,.mp4,.mov" style={{ marginTop: 8, padding: '12px 14px', background: 'var(--paper2)', border: '1px dashed rgba(36,33,28,0.28)', borderRadius: 2, fontSize: 13, width: '100%' }} />
           <div style={{ fontSize: 12, color: 'var(--grey)', marginTop: 8 }}>
-            PDF, gambar, atau video. Ikuti format penamaan berkas sesuai cabang pada halaman Info Peserta.
+            PDF, gambar, atau video (MP4/MOV). Video besar otomatis dikompres sebelum dikirim. Ikuti format penamaan berkas sesuai cabang pada halaman Info Peserta.
           </div>
+          {cabang === 'khitobah' ? (
+            <div style={{ marginTop: 18, display: 'grid', gap: 8 }}>
+              <label htmlFor="linkSubmisi" style={labelStyle}>Atau tempel link video YouTube</label>
+              <input
+                id="linkSubmisi"
+                name="linkSubmisi"
+                type="url"
+                inputMode="url"
+                placeholder="https://youtu.be/..."
+                style={inputStyle()}
+              />
+              <div style={{ fontSize: 12, color: 'var(--grey)' }}>
+                Unggah ke YouTube dengan setelan <b>Tidak publik (unlisted)</b>, bukan Pribadi, agar juri bisa menontonnya. Isi salah satu saja: berkas video atau link.
+              </div>
+            </div>
+          ) : null}
         </div>
 
         {usiaLebih ? (
@@ -339,7 +433,13 @@ export default function DaftarPage() {
             className="submit-hover"
             style={{ height: 54, padding: '0 34px', background: 'var(--ink)', color: 'var(--paper)', border: 0, borderRadius: 2, fontSize: 15, fontWeight: 600, cursor: busy ? 'wait' : 'pointer' }}
           >
-            {busy ? 'Mengirim...' : 'Kirim Pendaftaran'}
+            {busy
+              ? progres?.tahap === 'kompres'
+                ? `Mengompres video... ${progres.persen}%`
+                : progres?.tahap === 'unggah'
+                  ? `Mengunggah berkas... ${progres.persen}%`
+                  : 'Mengirim...'
+              : 'Kirim Pendaftaran'}
           </button>
           <a
             href="/cek-status"
@@ -348,6 +448,11 @@ export default function DaftarPage() {
             Sudah daftar? Cek status →
           </a>
         </div>
+        {progres ? (
+          <div style={{ marginTop: 12, fontSize: 12.5, color: '#7a2f2d' }}>
+            Jangan tutup halaman ini atau mengunci layar sampai proses selesai.
+          </div>
+        ) : null}
       </form>
 
       <div style={{ marginTop: 64, borderTop: '1px solid var(--line)', paddingTop: 28 }}>

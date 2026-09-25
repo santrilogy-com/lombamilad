@@ -18,6 +18,7 @@ type Row = {
   catatan: string | null;
   fileIdentitas: string | null;
   fileSubmisi: string | null;
+  linkSubmisi: string | null;
   nilaiPenyisihan: number | null;
   nilaiFinal: number | null;
 };
@@ -316,6 +317,16 @@ function PendaftarRow({
             style={{ fontSize: 12, display: 'inline-block', fontWeight: 600, marginLeft: 10 }}
           >
             Submisi ↗
+          </a>
+        ) : null}
+        {row.linkSubmisi ? (
+          <a
+            href={row.linkSubmisi}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ fontSize: 12, display: 'inline-block', fontWeight: 600, marginLeft: 10 }}
+          >
+            YouTube ↗
           </a>
         ) : null}
       </td>

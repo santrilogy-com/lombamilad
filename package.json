@@ -19,9 +19,11 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1121.0",
+    "@aws-sdk/s3-request-presigner": "^3.1140.0",
     "@prisma/client": "^5.22.0",
     "@vercel/blob": "^2.8.0",
     "bcryptjs": "^2.4.3",
+    "mediabunny": "^1.59.1",
     "next": "^14.2.15",
     "next-auth": "^4.24.8",
     "nodemailer": "^7.0.13",

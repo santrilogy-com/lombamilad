@@ -58,3 +58,24 @@ export function buatToken(): string {
   for (let i = 0; i < 8; i++) s += chars[randomInt(chars.length)];
   return s;
 }
+
+const HOST_YOUTUBE = ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be'];
+
+/**
+ * Validasi link video YouTube (alternatif unggah video submisi). Mengembalikan
+ * URL yang sudah dinormalisasi, atau null bila bukan link YouTube yang sah —
+ * hanya host YouTube yang diterima supaya kolom ini tidak jadi tempat link
+ * sembarang (phishing dsb.) yang nanti diklik admin.
+ */
+export function normalisasiLinkYoutube(raw: string): string | null {
+  let u: URL;
+  try {
+    u = new URL(raw.trim());
+  } catch {
+    return null;
+  }
+  if (u.protocol !== 'https:' && u.protocol !== 'http:') return null;
+  if (!HOST_YOUTUBE.includes(u.hostname.toLowerCase())) return null;
+  u.protocol = 'https:';
+  return u.toString();
+}
