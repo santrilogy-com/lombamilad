@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { LOMBA } from '@/lib/data';
+import { LOMBA, CONTACT_WA } from '@/lib/data';
 import { buatTautanWa } from '@/lib/whatsapp';
 
 // Baris "[Teks Tombol](https://...)" pada pesan dirender jadi tombol di email;
@@ -17,41 +17,71 @@ function untukWa(pesan: string): string {
     .join('\n');
 }
 
+// Pembuka & penutup baku semua pengumuman: formal, tetapi tetap hangat.
+// Email tidak menambahkan salam sendiri bila pesan sudah diawali "Assalamu'alaikum"
+// (lihat kirimPengumumanEmail di src/lib/email.ts).
+const PEMBUKA = "Assalamu'alaikum warahmatullahi wabarakatuh.\n\nYth. {nama},\n\n";
+const PENUTUP = `\n\nAtas perhatian dan partisipasinya, kami ucapkan terima kasih. Bila ada yang ingin ditanyakan, jangan sungkan menghubungi panitia melalui WhatsApp di ${CONTACT_WA.join(' atau ')}.\n\nWassalamu'alaikum warahmatullahi wabarakatuh.\n\nHormat kami,\nPanitia Lomba Nasional Milad ke-290 Pondok Pesantren Sidogiri`;
+
 const TEMPLATE_JENIS: { label: string; judul: string; pesan: string }[] = [
   {
     label: 'Kosongkan (mulai dari nol)',
     judul: '',
-    pesan: "Assalamu'alaikum {nama},\n\n",
+    pesan: PEMBUKA + PENUTUP,
   },
   {
     label: 'Jadwal & Link Zoom — Technical Meeting',
-    judul: 'Info Technical Meeting — Link Zoom',
+    judul: 'Undangan Technical Meeting Lomba Nasional Milad ke-290',
     pesan:
-      "Assalamu'alaikum {nama},\n\nMengingatkan jadwal Technical Meeting Lomba Nasional Milad Sidogiri ke-290:\n\nKamis, 18 Jumadal Ula 1448 H. | 29 Oktober 2026 M.\n\nMohon hadir tepat waktu. Bila berhalangan, konfirmasi kepada panitia terlebih dahulu.\n\n[Gabung Zoom Technical Meeting](https://zoom.us/j/GANTI_LINK_ZOOM)",
+      PEMBUKA +
+      'Semoga Anda senantiasa dalam keadaan sehat dan dalam lindungan Allah SWT. Dengan hormat, kami mengundang Anda untuk mengikuti Technical Meeting Lomba Nasional Milad Sidogiri ke-290 yang insyaAllah akan dilaksanakan pada:\n\n' +
+      'Hari/tanggal: Kamis, 18 Jumadal Ula 1448 H. | 29 Oktober 2026 M.\nTempat: Zoom Meeting (tautan di bawah)\n\n' +
+      'Dalam pertemuan ini panitia akan menyampaikan tata tertib, teknis pelaksanaan, serta menjawab pertanyaan seputar perlombaan. Kami mohon Anda dapat hadir tepat waktu. Apabila berhalangan hadir, mohon berkenan mengabarkan kepada panitia terlebih dahulu.\n\n' +
+      '[Gabung Zoom Technical Meeting](https://zoom.us/j/GANTI_LINK_ZOOM)' +
+      PENUTUP,
   },
   {
     label: 'Jadwal & Link Zoom — Penyisihan',
-    judul: 'Jadwal & Link Zoom Penyisihan',
+    judul: 'Jadwal Pelaksanaan Babak Penyisihan',
     pesan:
-      "Assalamu'alaikum {nama},\n\nPenyisihan Lomba Nasional Milad Sidogiri ke-290 dilaksanakan:\n\nJum'at, 19 Jumadal Ula 1448 H. | 30 Oktober 2026 M.\n\nMohon bergabung 15 menit sebelum jadwal dan pastikan kamera serta mikrofon aktif selama penyisihan berlangsung.\n\n[Gabung Zoom Penyisihan](https://zoom.us/j/GANTI_LINK_ZOOM)",
+      PEMBUKA +
+      'Semoga Anda senantiasa dalam keadaan sehat dan dalam lindungan Allah SWT. Bersama pesan ini kami sampaikan bahwa babak penyisihan Lomba Nasional Milad Sidogiri ke-290 insyaAllah akan dilaksanakan pada:\n\n' +
+      "Hari/tanggal: Jum'at, 19 Jumadal Ula 1448 H. | 30 Oktober 2026 M.\nTempat: Zoom Meeting (tautan di bawah)\n\n" +
+      'Agar penyisihan berjalan lancar, kami mohon Anda:\n1. Bergabung paling lambat 15 menit sebelum jadwal dimulai.\n2. Memastikan kamera dan mikrofon aktif selama penyisihan berlangsung.\n3. Menggunakan koneksi internet yang stabil dan tempat yang tenang.\n\n' +
+      'Kami doakan semoga Anda dapat tampil dengan maksimal.\n\n' +
+      '[Gabung Zoom Penyisihan](https://zoom.us/j/GANTI_LINK_ZOOM)' +
+      PENUTUP,
   },
   {
     label: 'Pengumuman Hasil Penyisihan (umum)',
-    judul: 'Pengumuman Hasil Penyisihan',
+    judul: 'Pengumuman Hasil Babak Penyisihan',
     pesan:
-      "Assalamu'alaikum {nama},\n\nHasil penyisihan Lomba Nasional Milad Sidogiri ke-290 sudah dapat dicek melalui Dashboard Peserta.\n\nSelamat kepada peserta yang lolos ke babak final. Bagi yang belum berkesempatan lolos, terima kasih atas partisipasi dan semangatnya.",
+      PEMBUKA +
+      'Alhamdulillah, rangkaian babak penyisihan Lomba Nasional Milad Sidogiri ke-290 telah selesai dilaksanakan. Kami mengucapkan terima kasih atas partisipasi, kesungguhan, dan karya terbaik yang telah Anda berikan.\n\n' +
+      'Hasil penyisihan kini sudah dapat dilihat melalui Dashboard Peserta dengan memasukkan nomor pendaftaran dan token Anda.\n\n' +
+      'Kepada peserta yang lolos ke babak final, kami ucapkan selamat; informasi teknis babak final akan kami sampaikan dalam pengumuman berikutnya. Kepada peserta yang belum berkesempatan melaju, semoga pengalaman ini menjadi bekal berharga dan semangat Anda untuk terus berkarya tidak pernah surut. Keputusan dewan juri bersifat final.' +
+      PENUTUP,
   },
   {
-    label: 'Pengingat Batas Pengumpulan Berkas',
-    judul: 'Pengingat: Batas Pengumpulan Berkas',
+    label: 'Pengingat Batas Pengumpulan Karya',
+    judul: 'Pengingat Batas Akhir Pengumpulan Karya',
     pesan:
-      "Assalamu'alaikum {nama},\n\nMengingatkan batas akhir pengumpulan naskah/berkas persyaratan lomba adalah Rabu, 17 Jumadal Ula 1448 H. | 28 Oktober 2026 M.\n\nMohon segera lengkapi berkas Anda sebelum batas waktu tersebut agar pendaftaran dapat diproses.",
+      PEMBUKA +
+      'Semoga Anda senantiasa dalam keadaan sehat dan dalam lindungan Allah SWT. Melalui pesan ini kami ingin mengingatkan kembali batas akhir pengumpulan karya Lomba Nasional Milad Sidogiri ke-290:\n\n' +
+      'Khitobah & Syair Berbahasa Arab: Rabu, 17 Jumadal Ula 1448 H. | 28 Oktober 2026 M.\nCipta Puisi Berbahasa Indonesia: Senin, 29 Jumadal Ula 1448 H. | 9 November 2026 M.\n\n' +
+      'Karya dapat dikirim atau diganti kapan saja sebelum batas tersebut melalui Dashboard Peserta, pada bagian "Karya / Submisi". Bagi Anda yang sudah mengirimkan karya, terima kasih — pesan ini dapat diabaikan.' +
+      PENUTUP,
   },
   {
     label: 'Jadwal Babak Final (luring)',
-    judul: 'Jadwal Babak Final',
+    judul: 'Undangan Babak Final Lomba Nasional Milad ke-290',
     pesan:
-      "Assalamu'alaikum {nama},\n\nSelamat, Anda lolos ke babak final. Babak final dilaksanakan secara luring:\n\nMalam Jum'at, 10 Jumadal Tsaniyah 1448 H. | 20 November 2026 M., di Pondok Pesantren Sidogiri.\n\nMohon konfirmasi kehadiran kepada panitia dan bawa identitas resmi (KTP/KTM/KTS) untuk registrasi ulang.",
+      PEMBUKA +
+      'Alhamdulillah, dengan penuh rasa syukur kami sampaikan selamat atas keberhasilan Anda melaju ke babak final Lomba Nasional Milad Sidogiri ke-290. Babak final insyaAllah akan dilaksanakan secara luring pada:\n\n' +
+      "Hari/tanggal: Malam Jum'at, 10 Jumadal Tsaniyah 1448 H. | 20 November 2026 M.\nTempat: Pondok Pesantren Sidogiri, Pasuruan\n\n" +
+      'Kami mohon Anda berkenan:\n1. Mengonfirmasi kehadiran kepada panitia melalui WhatsApp.\n2. Membawa identitas resmi (KTP/KTM/KTS) untuk registrasi ulang.\n3. Hadir sesuai jadwal registrasi yang akan kami informasikan lebih lanjut.\n\n' +
+      'Kami menantikan kehadiran Anda dan semoga Allah SWT memberikan kelancaran serta hasil terbaik.' +
+      PENUTUP,
   },
 ];
 
@@ -115,7 +145,7 @@ export default function BroadcastWa({ peserta, pengumuman }: { peserta: Peserta[
     const p = pengumuman.find((x) => x.id === id);
     if (!p) return;
     setJudul(p.judul);
-    setPesan(`Assalamu'alaikum {nama},\n\n${p.isi}`);
+    setPesan(`${PEMBUKA}${p.isi}${PENUTUP}`);
   }
 
   function pilihTemplate(label: string) {
@@ -289,7 +319,7 @@ export default function BroadcastWa({ peserta, pengumuman }: { peserta: Peserta[
               value={pesan}
               onChange={(e) => setPesan(e.target.value)}
               rows={7}
-              placeholder={"Assalamu'alaikum {nama},\n\nIsi pengumuman..."}
+              placeholder={"Assalamu'alaikum warahmatullahi wabarakatuh.\n\nYth. {nama},\n\nIsi pengumuman..."}
               style={{ width: '100%', padding: 12, fontSize: 13.5, background: 'var(--paper)', border: '1px solid rgba(36,33,28,0.2)', borderRadius: 2, resize: 'vertical', fontFamily: 'inherit' }}
             />
             <p style={{ fontSize: 11.5, color: 'var(--grey)', margin: '6px 0 0' }}>

@@ -176,7 +176,12 @@ export async function kirimPengumumanEmail(opts: {
   const html = bungkusEmail(
     escapeHtml(judul),
     `
-      <p style="font-size:14px;line-height:1.6;margin:0 0 16px;">Assalamu'alaikum <strong>${escapeHtml(nama)}</strong>,</p>
+      ${
+        // Template pengumuman sudah memuat salam pembuka sendiri — jangan cetak dua kali.
+        /^\s*assalamu/i.test(isi)
+          ? ''
+          : `<p style="font-size:14px;line-height:1.6;margin:0 0 16px;">Assalamu'alaikum <strong>${escapeHtml(nama)}</strong>,</p>`
+      }
       <div style="background:#fff;border-radius:6px;padding:18px 20px;margin:0 0 18px;">${isiHtml}</div>
       <a href="${baseUrl}/cek-status" style="display:inline-block;background:#24211c;color:#efede7;text-decoration:none;padding:12px 20px;border-radius:4px;font-size:14px;font-weight:600;">Buka Dashboard Peserta</a>
       <p style="font-size:12px;color:#7c7b77;margin-top:24px;">Email ini dikirim panitia Lomba Nasional Milad Sidogiri ke-290.</p>
