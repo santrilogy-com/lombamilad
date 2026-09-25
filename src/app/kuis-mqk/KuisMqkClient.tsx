@@ -75,7 +75,11 @@ export default function KuisMqkClient() {
   const lapoKameraRef = useRef(0);
   const lapoResizeRef = useRef(0);
   const lapoFullscreenRef = useRef(0);
+  const lastFullscreenChangeRef = useRef(0);
   const [fullscreenAktif, setFullscreenAktif] = useState(false);
+  // iPhone Safari tidak mendukung Fullscreen API untuk halaman — jangan tampilkan
+  // peringatan "tidak layar penuh" yang mustahil dipenuhi peserta di sana.
+  const [fullscreenDidukung, setFullscreenDidukung] = useState(true);
 
   function tampilkanToast(pesan: string) {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -83,13 +87,17 @@ export default function KuisMqkClient() {
     toastTimerRef.current = setTimeout(() => setToast(''), 1800);
   }
 
-  function laporMencurigakan(tipe: 'tab' | 'resize' | 'fullscreen' | 'kamera') {
+  function laporMencurigakan(tipe: 'tab' | 'fokus' | 'resize' | 'fullscreen' | 'kamera') {
     const { nomor: n, token: t } = credRef.current;
     if (!n || !t) return;
+    // keepalive wajib: laporan 'tab' dikirim tepat saat halaman disembunyikan,
+    // dan tanpa keepalive peramban HP membekukan/membatalkan request ini
+    // sebelum sampai ke server — pelanggaran pindah aplikasi tidak tercatat.
     fetch('/api/kuis/mencurigakan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ nomor: n, token: t, tipe }),
+      keepalive: true,
     }).catch(() => {});
   }
 
@@ -427,11 +435,44 @@ export default function KuisMqkClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
+  // Lapor bila jendela kuis kehilangan fokus padahal tab tetap terlihat —
+  // mis. alt-tab ke aplikasi AI/jendela lain di sampingnya, monitor kedua,
+  // atau split-screen. Kasus ini tidak memicu visibilitychange sama sekali.
+  useEffect(() => {
+    if (step !== 'sedang') return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    function onBlur() {
+      if (timer) clearTimeout(timer);
+      // Tunggu sejenak: pindah tab biasa juga memicu blur, dan itu sudah
+      // dilaporkan sebagai 'tab' oleh handler visibilitychange di atas.
+      timer = setTimeout(() => {
+        if (document.hidden || document.hasFocus()) return;
+        const now = Date.now();
+        if (now - lapoRef.current < 3000) return;
+        lapoRef.current = now;
+        tampilkanToast('Anda berpindah ke jendela lain — aktivitas ini tercatat');
+        laporMencurigakan('fokus');
+      }, 400);
+    }
+    window.addEventListener('blur', onBlur);
+    return () => {
+      window.removeEventListener('blur', onBlur);
+      if (timer) clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
   // Lapor bila jendela browser menyempit signifikan dari ukurannya (panel
   // samping / DevTools terbuka di desktop) — indikasi ekstensi AI aktif.
   useEffect(() => {
     if (step !== 'sedang') return;
+    // Di HP, selisih outer/inner berubah-ubah karena bilah alamat & keyboard,
+    // jadi indikator ini hanya andal di desktop.
+    if (window.matchMedia('(pointer: coarse)').matches) return;
     function onResize() {
+      // Masuk/keluar layar penuh juga memicu resize; itu sudah dilaporkan
+      // sebagai 'fullscreen', jangan dihitung dua kali.
+      if (Date.now() - lastFullscreenChangeRef.current < 1500) return;
       const widthGap = window.outerWidth - window.innerWidth;
       const heightGap = window.outerHeight - window.innerHeight;
       if (widthGap <= 160 && heightGap <= 160) return;
@@ -466,6 +507,7 @@ export default function KuisMqkClient() {
   useEffect(() => {
     if (step !== 'sedang') return;
     function onFullscreenChange() {
+      lastFullscreenChangeRef.current = Date.now();
       const aktif = Boolean(document.fullscreenElement);
       setFullscreenAktif(aktif);
       if (aktif) return;
@@ -475,6 +517,7 @@ export default function KuisMqkClient() {
       tampilkanToast('Anda keluar dari mode layar penuh — aktivitas ini tercatat');
       laporMencurigakan('fullscreen');
     }
+    setFullscreenDidukung(Boolean(document.fullscreenEnabled));
     document.addEventListener('fullscreenchange', onFullscreenChange);
     setFullscreenAktif(Boolean(document.fullscreenElement));
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
@@ -592,7 +635,7 @@ export default function KuisMqkClient() {
         </div>
       ) : null}
 
-      {step === 'sedang' && !fullscreenAktif ? (
+      {step === 'sedang' && fullscreenDidukung && !fullscreenAktif ? (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, background: '#f4dede', borderLeft: '3px solid #a94442', borderRadius: 2, padding: '12px 16px', marginBottom: 20 }}>
           <span style={{ fontSize: 13, color: '#7a2f2d' }}>Anda tidak dalam mode layar penuh — aktivitas ini tercatat.</span>
           <button
