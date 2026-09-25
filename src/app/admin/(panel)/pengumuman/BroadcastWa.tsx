@@ -30,6 +30,31 @@ const TEMPLATE_JENIS: { label: string; judul: string; pesan: string }[] = [
     pesan: PEMBUKA + PENUTUP,
   },
   {
+    // Kirim ke filter status "Terverifikasi".
+    label: 'Verifikasi Berkas — Diterima',
+    judul: 'Berkas Pendaftaran Anda Telah Terverifikasi',
+    pesan:
+      PEMBUKA +
+      'Semoga Anda senantiasa dalam keadaan sehat dan dalam lindungan Allah SWT. Dengan senang hati kami sampaikan bahwa berkas pendaftaran Anda pada Lomba Nasional Milad Sidogiri ke-290 telah kami periksa dan dinyatakan lengkap serta memenuhi persyaratan. Dengan demikian, Anda resmi tercatat sebagai peserta.\n\n' +
+      'Langkah selanjutnya:\n1. Pantau Dashboard Peserta secara berkala untuk informasi jadwal dan pengumuman terbaru.\n2. Bagi cabang yang mensyaratkan karya (naskah/video), pastikan karya sudah dikirim melalui Dashboard Peserta, bagian "Karya / Submisi", sebelum batas akhir.\n3. Simpan nomor pendaftaran dan token Anda dengan baik, karena keduanya diperlukan untuk masuk ke Dashboard.\n\n' +
+      'Selamat mempersiapkan diri. Kami doakan semoga Anda dapat memberikan penampilan dan karya terbaik.\n\n' +
+      '[Buka Dashboard Peserta](https://www.miladsidogiri.id/cek-status)' +
+      PENUTUP,
+  },
+  {
+    // Kirim ke filter status "Ditolak". Alasan per peserta tampil di Dashboard (catatan verifikasi).
+    label: 'Verifikasi Berkas — Ditolak',
+    judul: 'Informasi Hasil Verifikasi Berkas Pendaftaran',
+    pesan:
+      PEMBUKA +
+      'Semoga Anda senantiasa dalam keadaan sehat dan dalam lindungan Allah SWT. Terima kasih atas minat dan antusiasme Anda untuk mengikuti Lomba Nasional Milad Sidogiri ke-290.\n\n' +
+      'Setelah kami lakukan pemeriksaan, dengan berat hati kami sampaikan bahwa berkas pendaftaran Anda belum dapat kami terima karena belum memenuhi persyaratan yang ditentukan. Keterangan mengenai alasannya dapat Anda lihat pada catatan panitia di Dashboard Peserta.\n\n' +
+      'Apabila menurut Anda terdapat kekeliruan, atau Anda ingin menanyakan kemungkinan memperbaiki berkas selama masa pendaftaran masih dibuka, silakan menghubungi panitia. Kami dengan senang hati akan membantu.\n\n' +
+      'Kami sangat menghargai semangat Anda dan berharap dapat berjumpa kembali pada kesempatan berikutnya.\n\n' +
+      '[Lihat Catatan di Dashboard Peserta](https://www.miladsidogiri.id/cek-status)' +
+      PENUTUP,
+  },
+  {
     label: 'Jadwal & Link Zoom — Technical Meeting',
     judul: 'Undangan Technical Meeting Lomba Nasional Milad ke-290',
     pesan:
