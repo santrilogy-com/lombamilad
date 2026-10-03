@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { LOMBA, STEPS, CONTACT_WA } from '@/lib/data';
 import PageOrnaments from '@/components/PageOrnaments';
+import GrupWaCard from '@/components/GrupWaCard';
 import {
   MAX_FILE_MB,
   isiFormSubmisi,
@@ -186,6 +187,7 @@ export default function DaftarPage() {
               </>
             ) : null}
           </div>
+          <GrupWaCard cabangId={cabang} style={{ marginBottom: 24 }} />
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <Link
               href="/cek-status"

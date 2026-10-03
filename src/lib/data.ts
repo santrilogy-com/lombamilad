@@ -358,6 +358,15 @@ export const FASILITAS: { title: string; detail: string }[] = [
 ];
 
 export const CONTACT_WA = ['085349819005', '085807111227'];
+
+/** Link undangan grup WhatsApp peserta, per cabang lomba. */
+export const GRUP_WA: Record<string, string> = {
+  puisi: 'https://chat.whatsapp.com/DKBBkIKAhGQ1foPKZaNHMK',
+  khitobah: 'https://chat.whatsapp.com/KczUnnrRA94H99ikQHVEtX',
+  syair: 'https://chat.whatsapp.com/LGs2vAgxH7j2gxEHoRc9Bk',
+  mqk: 'https://chat.whatsapp.com/LIBowKwFJ3kHRFW4NOGHf2',
+  mtq: 'https://chat.whatsapp.com/GtkVG7cptEZGONVPIdzTTF',
+};
 export const WEBSITE = 'miladsidogiri.id';
 export const SIDOGIRI_NET = 'sidogiri.net';
 

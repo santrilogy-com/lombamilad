@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CONTACT_WA } from '@/lib/data';
 import PageOrnaments from '@/components/PageOrnaments';
+import GrupWaCard from '@/components/GrupWaCard';
 import { isiFormSubmisi, jagaLayarMenyala, labelProgres, siapkanSubmisi, type ProgresSubmisi } from '@/lib/unggah-submisi-klien';
 
 type KuisInfo = {
@@ -306,6 +307,8 @@ function CekStatusForm() {
                 Catatan: {result.verifikasiCatatan}
               </div>
             ) : null}
+
+            {result.statusKode !== 'DITOLAK' ? <GrupWaCard cabangId={result.cabangId} style={{ marginTop: 24 }} /> : null}
 
             <div style={{ marginTop: 24 }}>
               <Link href="/info-peserta" style={{ fontSize: 14, fontWeight: 600 }}>
