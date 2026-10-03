@@ -22,6 +22,8 @@ export async function GET(req: Request) {
 
   const session = await requireAdminSession();
   let rel = '';
+  // Nama berkas saat diunduh (tanpa ekstensi); null = biarkan browser menentukan.
+  let namaUnduh: string | null = null;
 
   if (session) {
     // admin: identifikasi berkas lewat id record + jenis, bukan path mentah dari klien,
@@ -38,9 +40,10 @@ export async function GET(req: Request) {
       if (!attempt) return new NextResponse('Not found', { status: 404 });
       rel = (jenis === 'kuis-awal' ? attempt.fotoAwal : attempt.fotoAkhir) || '';
     } else {
-      const found = await prisma.pendaftar.findUnique({ where: { id } });
+      const found = await prisma.pendaftar.findUnique({ where: { id }, include: { cabang: true } });
       if (!found) return new NextResponse('Not found', { status: 404 });
       rel = (jenis === 'identitas' ? found.fileIdentitas : found.fileSubmisi) || '';
+      if (jenis === 'submisi') namaUnduh = `${found.nama}_${found.cabang.nama}`;
     }
   } else {
     if (!nomor || !token) return new NextResponse('Unauthorized', { status: 401 });
@@ -53,12 +56,14 @@ export async function GET(req: Request) {
     rel = found.fileIdentitas || '';
   }
 
+  const disposition = dispositionInline(namaUnduh, rel);
+
   if (rel.startsWith('r2://')) {
-    return serveR2(rel);
+    return serveR2(rel, disposition);
   }
 
   if (/^https?:\/\//.test(rel)) {
-    return serveRemote(rel);
+    return serveRemote(rel, disposition);
   }
 
   const full = path.resolve(path.join(process.cwd(), rel));
@@ -88,7 +93,7 @@ export async function GET(req: Request) {
   return new NextResponse(new Uint8Array(data), {
     headers: {
       'Content-Type': mime,
-      'Content-Disposition': 'inline',
+      'Content-Disposition': disposition,
       'Cache-Control': 'private, no-store',
     },
   });
@@ -99,9 +104,9 @@ export async function GET(req: Request) {
  * kedaluwarsa dalam 5 menit, bukan dialirkan lewat server — respons fungsi
  * Vercel dibatasi ~4.5MB sehingga video submisi tidak akan pernah terkirim.
  */
-async function serveR2(rel: string) {
+async function serveR2(rel: string, disposition: string) {
   try {
-    const signed = await urlBacaR2(rel);
+    const signed = await urlBacaR2(rel, disposition);
     return NextResponse.redirect(signed, { status: 302, headers: { 'Cache-Control': 'private, no-store' } });
   } catch {
     return new NextResponse('Not found', { status: 404 });
@@ -109,7 +114,7 @@ async function serveR2(rel: string) {
 }
 
 /** Ambil berkas dari Vercel Blob (store privat) memakai token server, bukan URL publik. */
-async function serveRemote(rawUrl: string) {
+async function serveRemote(rawUrl: string, disposition: string) {
   let parsed: URL;
   try {
     parsed = new URL(rawUrl);
@@ -129,8 +134,23 @@ async function serveRemote(rawUrl: string) {
   return new NextResponse(result.stream as unknown as ReadableStream, {
     headers: {
       'Content-Type': result.blob.contentType || 'application/octet-stream',
-      'Content-Disposition': 'inline',
+      'Content-Disposition': disposition,
       'Cache-Control': 'private, no-store',
     },
   });
+}
+
+/**
+ * Tetap `inline` (bisa dipratinjau di tab), tapi dengan nama berkas supaya saat
+ * disimpan namanya `namapeserta_lomba.ext`, bukan nama acak di storage.
+ */
+function dispositionInline(nama: string | null, rel: string) {
+  if (!nama) return 'inline';
+  const sumber = rel.startsWith('r2://') ? rel.slice('r2://'.length) : rel.split(/[?#]/)[0];
+  const ext = path.extname(sumber).toLowerCase();
+  const bersih = nama.replace(/[\\/:*?"<>|\x00-\x1f]+/g, '').replace(/\s+/g, ' ').trim() || 'submisi';
+  const namaFile = bersih + ext;
+  // Fallback ASCII untuk browser lama, plus filename* (RFC 5987) untuk nama ber-aksen/Arab.
+  const ascii = namaFile.normalize('NFKD').replace(/[^\x20-\x7e]/g, '').replace(/"/g, '') || `submisi${ext}`;
+  return `inline; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(namaFile)}`;
 }

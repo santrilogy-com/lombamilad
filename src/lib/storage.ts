@@ -265,11 +265,11 @@ export async function terimaUnggahanSubmisi(key: string): Promise<string> {
  * (setelah otorisasi) sebagai redirect, karena respons fungsi Vercel juga
  * dibatasi ~4.5MB — video submisi tidak bisa dialirkan lewat server.
  */
-export async function urlBacaR2(url: string) {
+export async function urlBacaR2(url: string, contentDisposition = 'inline') {
   const key = url.slice('r2://'.length);
   return getSignedUrl(
     getR2Client(),
-    new GetObjectCommand({ Bucket: r2Bucket(), Key: key, ResponseContentDisposition: 'inline' }),
+    new GetObjectCommand({ Bucket: r2Bucket(), Key: key, ResponseContentDisposition: contentDisposition }),
     { expiresIn: 5 * 60 }
   );
 }
